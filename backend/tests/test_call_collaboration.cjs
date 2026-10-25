@@ -1,0 +1,10 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const context=vm.createContext({Uint8Array,TextDecoder});
+vm.runInContext(fs.readFileSync('assets/call-collaboration.js','utf8').replace(/export function /g,'function '),context);
+const packet=item=>new TextEncoder().encode(JSON.stringify(item));
+assert.equal(context.decodeCallMessage(packet({id:'test',text:'  Olá!  '})).text,'Olá!');
+for(const item of [{text:'missing id'},{id:'x',text:''},{id:'x',text:'x'.repeat(2001)},{id:'x'.repeat(81),text:'invalid'},null])assert.equal(context.decodeCallMessage(packet(item)),null);
+assert.equal(context.decodeCallMessage(new Uint8Array(9001)),null);
+assert.equal(context.decodeCallMessage(new TextEncoder().encode('invalid JSON')),null);
+assert.equal(context.decodeCallMessage(packet({id:'x',text:'texto',uid:'forged'})).uid,undefined);
+console.log('Call chat: packet limits, validation and sender spoofing protection passed.');

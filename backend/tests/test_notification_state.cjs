@@ -1,0 +1,18 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const context=vm.createContext({});
+vm.runInContext(fs.readFileSync('assets/notification-state.js','utf8').replace(/export function /g,'function '),context);
+const items=Array.from({length:25},(_,i)=>({kind:'admin-post',ts:100-i,post:{id:'p'+i},person:{uid:'bob'}}));
+const records={};
+let page=context.notificationPage(items,records,1);
+assert.equal(page.items.length,10);assert.equal(page.pages,3);assert.equal(page.unread,25);
+records[context.notificationKey(items[0])]={read:true};
+page=context.notificationPage(items,records,2);assert.equal(page.items[0].post.id,'p10');assert.equal(page.unread,24);
+assert.equal(context.notificationPage(items,records,3).items.length,5);
+for(const item of items.slice(20)) records[context.notificationKey(item)]={deleted:true};
+page=context.notificationPage(items,records,3);assert.equal(page.page,2);assert.equal(page.pages,2);assert.equal(page.total,20);
+for(const item of items) records[context.notificationKey(item)]={deleted:true};
+page=context.notificationPage(items,records,3);assert.equal(page.total,0);assert.equal(page.page,1);assert.equal(page.unread,0);
+const dm={kind:'dm',otherUid:'bob',ts:100};assert.notEqual(context.notificationKey(dm),context.notificationKey({...dm,ts:101}));
+assert.notEqual(context.notificationKey(items[0]),context.notificationKey({...items[0],post:{id:'p0',_sector:'LACAM'}}));
+assert.equal(context.notificationPage(items,{},1,100).unread,0);
+console.log('Notifications: stable keys, new messages, private units, read/delete states, pagination boundaries and legacy reads passed.');

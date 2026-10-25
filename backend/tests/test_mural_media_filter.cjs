@@ -1,0 +1,15 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const context=vm.createContext({});
+vm.runInContext(fs.readFileSync('assets/mural-media-filter.js','utf8').replace(/export function /g,'function '),context);
+const {postMatchesMediaType:matches}=context;
+const posts=[{}, {attachments:[{mime_type:'application/pdf'}]}, {attachments:[{mime_type:'image/png'}]}, {attachments:[{mime_type:'image/gif'}]}, {attachments:[{mime_type:'video/mp4'}]}, {attachments:[{mime_type:'application/pdf'},{mime_type:'image/jpeg'}]}];
+assert.equal(posts.filter(post=>matches(post,'')).length,6);
+assert.equal(posts.filter(post=>matches(post,'pdf')).length,2);
+assert.equal(posts.filter(post=>matches(post,'image')).length,2);
+assert.equal(posts.filter(post=>matches(post,'gif')).length,1);
+assert.equal(posts.filter(post=>matches(post,'video')).length,1);
+assert.equal(posts.filter(post=>matches(post,'text')).length,1);
+assert.equal(matches({attachments:null},'text'),true);
+assert.equal(matches({attachments:[null]},'pdf'),false);
+assert.equal(context.attachmentMatchesType({mime_type:'APPLICATION/PDF'},'pdf'),true);
+console.log('Mural filters: all, PDF, images, GIF, video, no attachments and mixed publications passed.');

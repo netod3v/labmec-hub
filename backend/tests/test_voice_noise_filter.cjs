@@ -1,0 +1,12 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('assets/voice-noise-filter.js','utf8').split('async function loadBundle')[0].replace('import.meta.url',JSON.stringify('file:///assets/voice-noise-filter.js')).replace(/export function /g,'function ');
+const ctx=vm.createContext({URL});vm.runInContext(source,ctx);
+const input=(deviceId,label)=>({deviceId,label,kind:'audioinput'});
+const hardware=input('physical','Microfone (USB Headset)');
+for(const label of ['Stereo Mix (Realtek)','Mixagem estéreo','Monitor of speakers','CABLE Output','VoiceMeeter Output'])assert.equal(ctx.isSystemAudioInput(label),true);
+for(const label of ['Microfone (Realtek)','Microphone (USB Headset)','Padrão - Microfone'])assert.equal(ctx.isSystemAudioInput(label),false);
+assert.equal(ctx.preferredPhysicalMicrophone([input('default','Padrão - Stereo Mix'),input('mix','Stereo Mix'),hardware],'mix'),hardware);
+assert.equal(ctx.preferredPhysicalMicrophone([input('default','Microfone'),hardware],'physical'),null);
+assert.equal(ctx.preferredPhysicalMicrophone([input('mix','Stereo Mix')],'mix'),null);
+assert.equal(ctx.preferredPhysicalMicrophone([input('default','Padrão - Mixagem estéreo'),hardware],undefined),hardware);
+console.log('Voice filter: loopback detection, physical microphone selection and ordinary input preservation passed.');
