@@ -1,0 +1,18 @@
+.donation-dialog{width:min(480px,calc(100vw - 28px));max-height:90dvh;overflow:auto;padding:0;border:1px solid var(--border);border-radius:22px;background:var(--paper);color:var(--ink);box-shadow:0 24px 90px #0006;}
+.donation-dialog::backdrop{background:#03101dbb;backdrop-filter:blur(5px);}
+.donation-heading{position:relative;padding:28px 26px 20px;background:var(--sage);border-bottom:1px solid var(--border);}
+.donation-symbol{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:14px;background:var(--paper);color:var(--forest);font-size:32px;margin-bottom:12px;}
+.donation-heading h2{font-size:23px;margin:0 0 8px;}.donation-heading p{margin:0;color:var(--text-2);font-size:13px;line-height:1.7;}
+.donation-close{position:absolute;right:16px;top:14px;border:1px solid var(--border);border-radius:50%;width:34px;height:34px;background:var(--paper);color:var(--ink);font-size:22px;cursor:pointer;}
+.donation-content{padding:22px 26px;}.donation-content p{font-size:12px;line-height:1.7;color:var(--text-2);}.donation-voluntary{margin:0 0 20px;}.donation-content label{display:block;font-size:13px;font-weight:600;margin:0 0 10px;}
+.donation-presets{display:flex;gap:8px;margin-bottom:12px;}.donation-presets button{flex:1;border:1px solid var(--border);border-radius:10px;background:var(--sage);color:var(--ink);padding:10px 0;cursor:pointer;}.donation-presets button:hover{border-color:var(--forest);color:var(--forest);}
+.donation-amount{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:12px;padding:12px 15px;}.donation-amount:focus-within{outline:2px solid var(--forest);}.donation-amount input{min-width:0;width:100%;background:transparent;color:var(--ink);border:0;outline:0;font:600 22px inherit;}.donation-generate{width:100%;margin-top:14px;min-height:44px;}
+.donation-result{border-top:1px solid var(--border);margin-top:20px;padding-top:20px;text-align:center;}.donation-result[hidden]{display:none;}.donation-total{display:block;font-size:24px;margin-bottom:14px;}.donation-result canvas{display:block;width:min(240px,100%);height:auto;margin:auto;border-radius:8px;}.donation-result textarea{box-sizing:border-box;width:100%;resize:none;padding:10px;background:var(--sage);color:var(--ink);border:1px solid var(--border);border-radius:10px;font-size:11px;overflow-wrap:anywhere;}.donation-copy{width:100%;margin-top:10px;min-height:42px;}.donation-beneficiary{display:grid;gap:5px;text-align:left;padding:14px;margin-top:20px;border-radius:12px;background:var(--sage);font-size:12px;}.donation-beneficiary span{color:var(--text-2);}.donation-dialog button:focus-visible,.donation-dialog textarea:focus-visible{outline:2px solid var(--forest);outline-offset:3px;}
+.header-more-menu .header-menu-label{min-width:0;white-space:normal!important;overflow-wrap:anywhere;}
+.header-more-menu .icon-btn{min-height:40px;height:auto!important;padding-top:9px!important;padding-bottom:9px!important;text-align:left;}
+@media(min-width:721px){.header-more-menu{width:250px!important;max-width:calc(100vw - 24px);box-sizing:border-box;}}
+.donation-dialog[open]::backdrop{animation:donation-backdrop-in .24s ease-out both;}
+.donation-dialog.is-closing::backdrop{animation:donation-backdrop-out .16s ease-in both;}
+@keyframes donation-backdrop-in{from{opacity:0;}to{opacity:1;}}
+@keyframes donation-backdrop-out{from{opacity:1;}to{opacity:0;}}
+@media(prefers-reduced-motion:reduce){.donation-dialog[open]::backdrop{animation:none;}}

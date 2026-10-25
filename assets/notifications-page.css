@@ -1,0 +1,61 @@
+#sections-container.notifications-page-active>:not(#mention-notification-modal){display:none!important;}
+#sections-container.notifications-page-active{height:auto!important;min-height:0!important;}
+body.notifications-page-open #sections-container{grid-column:2/-1!important;}
+body.notifications-page-open .today-panel,body.notifications-page-open #lab-resources{display:none!important;}
+#mention-notification-modal.notifications-page{position:relative!important;inset:auto!important;z-index:auto!important;display:block!important;width:100%!important;height:auto!important;min-height:0!important;padding:0!important;opacity:1!important;visibility:visible!important;background:transparent!important;backdrop-filter:none!important;pointer-events:auto!important;}
+#mention-notification-modal.notifications-page.hidden{display:none!important;}
+#mention-notification-modal.notifications-page .modal-box{display:block!important;width:100%!important;max-width:none!important;height:auto!important;min-height:calc(100dvh - 220px)!important;max-height:none!important;margin:0!important;border:1px solid var(--border)!important;border-radius:18px!important;background:var(--paper)!important;box-shadow:none!important;transform:none!important;overflow:visible!important;}
+#mention-notification-modal.notifications-page .modal-head{position:static!important;display:flex!important;align-items:center;justify-content:space-between;gap:16px;padding:24px!important;border-bottom:1px solid var(--border);border-radius:18px 18px 0 0;}
+#notifications-page-title{font-size:24px;font-family:'Space Grotesk',sans-serif;}
+#mention-notification-modal.notifications-page .modal-head>div>span{display:block;margin-top:6px;font-size:13px;color:var(--text-2);}
+#mention-notification-modal.notifications-page #mention-notification-close{display:flex;align-items:center;gap:7px;width:auto!important;height:38px;padding:0 12px;border:1px solid var(--border);border-radius:10px;font-size:12px;flex:none;}
+#mention-notification-close svg{width:16px;height:16px;}
+#mention-notification-modal.notifications-page #mention-notification-list{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding:12px 20px 24px!important;}
+.notifications-page .mention-notification-item{padding:18px 14px;gap:14px;border-radius:12px;cursor:pointer;}
+.notifications-page .mention-notification-copy{font-size:14px;line-height:1.65;overflow-wrap:anywhere;}
+.notifications-page .mention-notification-time{font-size:12px;margin-top:7px;}
+.notifications-page .mention-notification-item:focus-visible{outline:2px solid var(--forest);outline-offset:-2px;}
+@media(max-width:720px){body.notifications-page-open #sections-container{grid-column:1/-1!important;}#mention-notification-modal.notifications-page .modal-head{padding:18px!important;gap:10px;}#notifications-page-title{font-size:21px;}#mention-notification-modal.notifications-page #mention-notification-list{padding:8px 10px 20px!important;}.notifications-page .mention-notification-item{padding:15px 10px;}}
+.notifications-empty{min-height:340px;min-height:min(48dvh,420px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center;}
+.notifications-empty-icon{display:grid;place-items:center;width:72px;height:72px;margin-bottom:22px;border:1px solid var(--border);border-radius:22px;background:var(--sage);color:var(--forest);}
+.notifications-empty-icon svg{width:32px;height:32px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.notifications-empty h2{font:700 21px 'Space Grotesk',sans-serif;margin:0 0 12px;color:var(--ink);}
+.notifications-empty p{max-width:360px;margin:0;color:var(--text-2);font-size:14px;line-height:1.8;}
+.notifications-empty-note{margin-top:22px;color:var(--text-3);font-size:12px;line-height:1.6;}
+#mention-notification-modal.notifications-page .modal-box{opacity:1!important;visibility:visible!important;transition:none!important;}
+.notification-entry{border-bottom:1px solid var(--border);border-radius:12px;margin-bottom:6px;overflow:hidden;}
+.notification-entry.is-unread{background:color-mix(in srgb,var(--forest) 8%,var(--paper));box-shadow:inset 3px 0 var(--forest);}
+.notification-entry .mention-notification-item{border:0;}
+.notification-entry-actions{display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 14px 14px;}
+.notification-entry-actions button{background:transparent;border:0;border-radius:6px;padding:6px;color:var(--text-2);font:600 12px 'Inter',sans-serif;cursor:pointer;}
+.notification-entry-actions button:hover{background:var(--sage);color:var(--forest);}
+.notification-entry-actions button:disabled{opacity:.5;cursor:wait;}
+.notification-read-label{font-size:12px;color:var(--text-3);}
+.notification-pagination{display:flex;flex-direction:column;align-items:center;gap:12px;padding:24px 0 4px;}
+.notification-pagination>span{font-size:12px;color:var(--text-2);}
+.notification-pagination>div{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;}
+.notification-pagination button{min-width:34px;min-height:36px;border:1px solid var(--border);border-radius:9px;background:var(--paper);color:var(--ink);padding:7px 10px;font:600 12px 'Inter',sans-serif;cursor:pointer;}
+.notification-pagination button[aria-current=page]{background:var(--forest);color:var(--on-accent);border-color:var(--forest);}
+.notification-pagination button:disabled{opacity:.4;cursor:default;}
+.notification-entry-actions button:focus-visible,.notification-pagination button:focus-visible{outline:2px solid var(--forest);outline-offset:2px;}
+
+.notification-entry{position:relative;overflow:visible;border:1px solid var(--border);margin-bottom:8px;background:var(--paper)}
+.notification-entry.is-unread{background:color-mix(in srgb,var(--forest) 10%,var(--paper));box-shadow:none}
+.notification-entry.is-unread::before{content:'';position:absolute;left:10px;top:29px;width:7px;height:7px;border-radius:50%;background:var(--forest);pointer-events:none}
+.notifications-page .notification-entry .mention-notification-item{padding:16px 50px 16px 28px;min-height:88px;border-radius:11px;align-items:flex-start;background:transparent;gap:12px}
+.notification-entry:hover,.notification-entry:focus-within{background:color-mix(in srgb,var(--forest) 12%,var(--paper))}
+.notification-entry.is-unread:hover,.notification-entry.is-unread:focus-within{background:color-mix(in srgb,var(--forest) 18%,var(--paper))}
+.notification-entry .mention-notification-copy{font-size:13px;line-height:1.6}
+.notification-entry .mention-notification-item .avatar{width:44px;height:44px;border-radius:9px}
+.notification-entry-menu{position:absolute;right:10px;top:16px;z-index:1}
+.notification-entry-menu[open]{z-index:10}
+.notification-entry-menu summary{display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:50%;color:var(--text-2);font:700 23px/1 Inter,sans-serif;list-style:none;cursor:pointer;user-select:none}
+.notification-entry-menu summary::-webkit-details-marker{display:none}
+.notification-entry-menu summary:hover,.notification-entry-menu[open] summary{background:color-mix(in srgb,var(--forest) 15%,transparent);color:var(--ink)}
+.notification-entry-menu summary:focus-visible{outline:2px solid var(--forest);outline-offset:2px}
+.notification-entry-menu .notification-entry-actions{position:absolute;right:0;top:36px;display:flex;flex-direction:column;align-items:stretch;gap:4px;min-width:210px;max-width:calc(100vw - 50px);padding:7px;border:1px solid var(--border);border-radius:12px;background:var(--paper);box-shadow:0 8px 28px #0002}
+.notification-entry-menu .notification-entry-actions button{display:flex;align-items:center;gap:9px;text-align:left;padding:10px 12px;min-height:38px;color:var(--ink);font-size:12px}
+.notification-entry-actions svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;flex:none}
+.notification-entry-menu .notification-read-label{padding:10px 12px}
+@media(prefers-reduced-motion:no-preference){.notification-entry{transition:background .15s ease}.notification-entry-menu[open] .notification-entry-actions{animation:notification-actions-in .14s ease-out}@keyframes notification-actions-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}}
+@media(max-width:720px){.notifications-page .notification-entry .mention-notification-item{padding-left:25px;padding-right:44px;gap:10px}.notification-entry-menu{right:6px}.notification-entry.is-unread::before{left:8px}}

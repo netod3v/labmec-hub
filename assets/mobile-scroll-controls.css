@@ -1,0 +1,7 @@
+@media(max-width:720px){
+  .mural-compose-fab,#note-card:not(.expanded),#sections-container>.work-nav{transition:transform .2s ease,opacity .2s ease;}
+  body.mobile-controls-hidden.mobile-work-nav-reached #sections-container>.work-nav{transform:translateY(calc(-100% - max(8px,env(safe-area-inset-top,0px)) - 12px));opacity:0;pointer-events:none;}
+  body.mobile-controls-hidden .header-actions{transform:translateY(115%);pointer-events:none;}
+  body.mobile-controls-hidden .mural-compose-fab,body.mobile-controls-hidden #note-card:not(.expanded){transform:translateX(calc(100% + 28px));opacity:0;pointer-events:none;}
+}
+@media(prefers-reduced-motion:reduce){.mural-compose-fab,#note-card,.header-actions,#sections-container>.work-nav{transition:none!important;}}

@@ -1,0 +1,10 @@
+.first-post-celebration{position:fixed;inset:0;z-index:1000;pointer-events:none}
+.first-post-celebration-card{position:absolute;bottom:28px;left:50%;translate:-50% 0;display:flex;align-items:center;gap:14px;width:min(430px,calc(100vw - 32px));padding:20px;border:1px solid color-mix(in srgb,var(--forest) 40%,var(--border));border-radius:18px;background:var(--paper);color:var(--ink);box-shadow:0 14px 50px #0003;pointer-events:auto}
+.first-post-celebration-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:15px;background:var(--sage);color:var(--forest);flex:none}
+.first-post-celebration-icon svg{width:28px;height:28px;fill:currentColor}
+.first-post-celebration-card strong{font:700 17px 'Space Grotesk',sans-serif}.first-post-celebration-card p{margin:6px 0 0;font:12px/1.6 Inter,sans-serif;color:var(--text-2)}
+.first-post-celebration-card button{align-self:flex-start;flex:none;margin-left:auto;width:25px;height:25px;border:0;border-radius:50%;background:transparent;color:var(--text-2);font-size:21px;cursor:pointer}.first-post-celebration-card button:hover{background:var(--sage)}.first-post-celebration-card button:focus-visible{outline:2px solid var(--forest)}
+.first-post-confetti{position:absolute;left:50%;top:55%;width:6px;height:10px;border-radius:2px;animation:first-post-confetti var(--duration) ease-out both}
+@keyframes first-post-confetti{0%{opacity:0;transform:translate(0,0) rotate(0)}15%{opacity:1}55%{opacity:1;transform:translate(calc(var(--dx)*.7),var(--dy)) rotate(calc(var(--turn)*.5))}100%{opacity:0;transform:translate(var(--dx),var(--end)) rotate(var(--turn))}}
+@media(prefers-reduced-motion:no-preference){.first-post-celebration-card{animation:first-post-toast-in .3s cubic-bezier(.2,.8,.2,1) both}@keyframes first-post-toast-in{from{opacity:0;transform:translateY(20px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}}
+@media(max-width:720px){.first-post-celebration-card{bottom:calc(88px + env(safe-area-inset-bottom,0px));padding:16px;gap:10px}.first-post-celebration-card strong{font-size:15px}}

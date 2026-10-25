@@ -1,0 +1,77 @@
+{
+  "name": "@sapphi-red/web-noise-suppressor",
+  "version": "0.4.1",
+  "description": "Noise suppressor nodes for Web Audio API.",
+  "homepage": "https://github.com/sapphi-red/web-noise-suppressor#readme",
+  "bugs": {
+    "url": "https://github.com/sapphi-red/web-noise-suppressor/issues"
+  },
+  "license": "MIT",
+  "author": "sapphi-red",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sapphi-red/web-noise-suppressor.git"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/sapphi-red"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./gtcrnWorklet.js": {
+      "types": "./dist/gtcrn/workletProcessor.d.ts",
+      "default": "./dist/gtcrn/workletProcessor.js"
+    },
+    "./noiseGateWorklet.js": {
+      "types": "./dist/noiseGate/workletProcessor.d.ts",
+      "default": "./dist/noiseGate/workletProcessor.js"
+    },
+    "./rnnoiseWorklet.js": {
+      "types": "./dist/rnnoise/workletProcessor.d.ts",
+      "default": "./dist/rnnoise/workletProcessor.js"
+    },
+    "./speexWorklet.js": {
+      "types": "./dist/speex/workletProcessor.d.ts",
+      "default": "./dist/speex/workletProcessor.js"
+    },
+    "./gtcrn.wasm": "./dist/gtcrn.wasm",
+    "./rnnoise_simd.wasm": "./dist/rnnoise_simd.wasm",
+    "./rnnoise.wasm": "./dist/rnnoise.wasm",
+    "./speex.wasm": "./dist/speex.wasm"
+  },
+  "devDependencies": {
+    "@oxc-project/runtime": "0.75.1",
+    "@sapphi-red/gtcrn-wasm": "^0.0.3",
+    "@sapphi-red/speex-preprocess-wasm": "^0.4.0",
+    "@shiguredo/rnnoise-wasm": "^2022.2.0",
+    "@types/audioworklet": "^0.0.100",
+    "@types/emscripten": "^1.41.6",
+    "@types/node": "^22.20.4",
+    "oxfmt": "^0.68.0",
+    "oxlint": "^1.83.0",
+    "oxlint-tsgolint": "^7.0.2002",
+    "tsdown": "^0.23.0",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "uvu": "^0.5.6",
+    "wasm-feature-detect": "^1.9.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "type-check": "tsc --noEmit",
+    "test": "tsx node_modules/uvu/bin.js src .*\\.test\\.ts"
+  }
+}
