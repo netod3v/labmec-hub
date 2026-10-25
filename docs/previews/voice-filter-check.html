@@ -1,0 +1,49 @@
+<!doctype html><meta charset="utf-8"><title>Teste local do filtro de voz</title>
+<script src="../../assets/vendor/livekit-client.umd.min.js"></script>
+<body><p id="result">Verificando áudio sintético; nenhum microfone real é usado.</p>
+<script type="module">
+import {VoiceNoiseProcessor,setVoiceNoiseFilter,releaseVoiceNoiseFilter} from '../../assets/voice-noise-filter.js';
+const checks=[];
+const ok=(value,label)=>{if(!value)throw Error(label);checks.push(label);};
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+window.testDone=(async()=>{
+  const contexts=[],tracks=[];
+  try{
+    const context=new AudioContext({sampleRate:48000});contexts.push(context);await context.resume();
+    const buffer=context.createBuffer(1,48000,48000),data=buffer.getChannelData(0);
+    let seed=12345;for(let i=0;i<data.length;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;data[i]=(seed/4294967296*2-1)*.08;}
+    const source=context.createBufferSource();source.buffer=buffer;source.loop=true;
+    const destination=context.createMediaStreamDestination();destination.channelCount=1;source.connect(destination);source.start();
+    const raw=destination.stream.getAudioTracks()[0];tracks.push(raw);
+    const processor=new VoiceNoiseProcessor();await processor.init({track:raw,audioContext:context});
+    ok(processor.context===context,'shared 48 kHz context reused');
+    const rawAnalyser=context.createAnalyser(),filteredAnalyser=context.createAnalyser();
+    source.connect(rawAnalyser);
+    const filteredSource=context.createMediaStreamSource(new MediaStream([processor.processedTrack]));filteredSource.connect(filteredAnalyser);
+    const silence=context.createGain();silence.gain.value=0;rawAnalyser.connect(silence);filteredAnalyser.connect(silence);silence.connect(context.destination);
+    await wait(1200);
+    const rms=node=>{const values=new Float32Array(2048);node.getFloatTimeDomainData(values);return Math.sqrt(values.reduce((sum,x)=>sum+x*x,0)/values.length);};
+    const rawRms=rms(rawAnalyser),filteredRms=rms(filteredAnalyser);
+    ok(rawRms>.01,'synthetic noise input present');ok(filteredRms<rawRms*.8,'background noise attenuated');
+    const oldOutput=processor.processedTrack;await processor.restart({track:raw,audioContext:context});
+    ok(oldOutput.readyState==='ended'&&processor.processedTrack.readyState==='live','restart releases previous output');
+    const output=processor.processedTrack;await processor.destroy();
+    ok(output.readyState==='ended'&&raw.readyState==='live','destroy preserves raw microphone');
+    ok(context.state==='running','shared context remains open');
+    const other=new AudioContext({sampleRate:44100});contexts.push(other);await other.resume();
+    const resampled=new VoiceNoiseProcessor();await resampled.init({track:raw,audioContext:other});const owned=resampled.context;
+    ok(owned.sampleRate===48000&&owned!==other,'44.1 kHz input uses dedicated 48 kHz graph');await resampled.destroy();
+    ok(owned.state==='closed'&&other.state==='running','only owned context closed');
+    const local=new LivekitClient.LocalAudioTrack(raw);await local.setAudioContext(context);
+    await setVoiceNoiseFilter(local,true);const sdkOutput=local.mediaStreamTrack;
+    ok(sdkOutput!==raw&&sdkOutput.readyState==='live','LiveKit publishes processed track');
+    await local.mute();await local.unmute();ok(!local.isMuted,'mute and unmute preserved');
+    await setVoiceNoiseFilter(local,false);ok(local.mediaStreamTrack===raw,'native fallback restored');
+    await setVoiceNoiseFilter(local,true);releaseVoiceNoiseFilter(local);local.stop();
+    ok(raw.readyState==='ended','capture released on leave');
+    source.stop();
+    const result={status:'PASS',checks:checks.length,rawRms,filteredRms};document.getElementById('result').textContent=JSON.stringify(result);return result;
+  }catch(error){document.getElementById('result').textContent=error.stack;return {status:'FAIL',error:error.stack,checks};}
+  finally{tracks.forEach(track=>track.stop());await Promise.all(contexts.filter(context=>context.state!=='closed').map(context=>context.close()));}
+})();
+</script>
