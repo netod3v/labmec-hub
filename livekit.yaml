@@ -1,0 +1,15 @@
+# Desenvolvimento neste computador. Para publicar, consulte docs/chamadas-voz.md.
+port: 7880
+bind_addresses:
+  - "0.0.0.0"
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: false
+  node_ip: 127.0.0.1
+room:
+  empty_timeout: 60
+  departure_timeout: 20
+  max_participants: 30
+logging:
+  level: warn

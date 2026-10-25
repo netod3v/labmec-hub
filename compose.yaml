@@ -1,0 +1,76 @@
+services:
+  database:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: labiomec
+      POSTGRES_USER: labiomec
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U labiomec -d labiomec]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  hub:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://labiomec:${POSTGRES_PASSWORD}@database:5432/labiomec
+      SECRET_KEY: ${SECRET_KEY:?Defina SECRET_KEY no .env}
+      STORAGE_DIR: /data/files
+      STORAGE_LIMIT_GB: ${STORAGE_LIMIT_GB:-100}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-2048}
+      POST_ATTACHMENT_MAX_MB: ${POST_ATTACHMENT_MAX_MB:-250}
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
+      ALLOW_LOCAL_FRAME_PREVIEW: ${ALLOW_LOCAL_FRAME_PREVIEW:-false}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      LIVEKIT_URL: ${LIVEKIT_URL:-}
+      LIVEKIT_INTERNAL_URL: ${LIVEKIT_INTERNAL_URL:-http://voice:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      HOST: 0.0.0.0
+      PYTHONDONTWRITEBYTECODE: "1"
+      TRUSTED_PROXY_COUNT: ${TRUSTED_PROXY_COUNT:-0}
+      UPLOADS_PER_HOUR: ${UPLOADS_PER_HOUR:-200}
+    volumes:
+      - lab_files:/data/files
+    # Endurecimento do contêiner: sem privilégios extras e com limite de processos.
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request as u; u.urlopen('http://127.0.0.1:5000/api/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    ports:
+      - 127.0.0.1:5000:5000
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+
+  voice:
+    image: livekit/livekit-server:v1.13.10
+    command: ["--config", "/etc/livekit.yaml", "--keys", "${LIVEKIT_API_KEY:-not-configured}: ${LIVEKIT_API_SECRET:-not-configured}"]
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "127.0.0.1:7880:7880"
+      - "127.0.0.1:7881:7881"
+      - "127.0.0.1:7882:7882/udp"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  lab_files:
