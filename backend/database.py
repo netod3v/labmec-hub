@@ -14,7 +14,7 @@ class Database:
     @contextmanager
     def transaction(self):
         # O context manager faz commit ou rollback e sempre fecha a conexão.
-        with psycopg.connect(self.url, row_factory=dict_row, connect_timeout=5) as connection:
+        with psycopg.connect(self.url, row_factory=dict_row, connect_timeout=5, prepare_threshold=None) as connection:
             yield Repository(connection)
 
     def initialize(self):

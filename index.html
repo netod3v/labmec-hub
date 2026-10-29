@@ -119,7 +119,7 @@ header{padding:36px 0 26px;}
 .preview-title{font-size:13px;font-weight:600;}
 .preview-sub{font-size:11px;color:var(--text-2);}
 @media(max-width:600px){.preview-row{grid-template-columns:1fr;}}
-@media(max-width:480px){
+@media(max-width:440px){
   .header-top{flex-wrap:wrap;}
   .brand-row{flex:1 1 100%;}
   .header-actions{flex:1 1 100%;justify-content:flex-end;margin-top:10px;}
@@ -131,7 +131,7 @@ header{padding:36px 0 26px;}
 }
 
 /* responsividade: empilha input de e-mail e mini-preview em telas muito pequenas */
-@media (max-width:480px){
+@media (max-width:440px){
   /* o wrapper do input + preview usa inline style; forçamos comportamento responsivo aqui */
   #login-form > div:first-child{display:flex;flex-direction:column;gap:8px;align-items:stretch;}
   #login-email{width:100%;}
@@ -351,7 +351,7 @@ html[data-theme="dark"], html[data-theme="black"] .dm-conversation-remove:hover{
 .dm-bubble-mine audio{filter:saturate(.85);}
 @keyframes audioRecordPulse{0%,100%{box-shadow:0 0 0 0 rgba(224,91,91,.15)}50%{box-shadow:0 0 0 5px rgba(224,91,91,.2)}}
 .dm-empty{font-size:13px;color:var(--text-2);text-align:center;padding:30px 10px;}
-.call-modal-box{width:min(92vw,480px);max-width:480px;}
+.call-modal-box{width:min(92vw,480px);max-width:440px;}
 .call-modal-box .modal-body{padding:0;background:#111;}
 .call-stage{width:100%;min-height:180px;display:grid;place-items:center;background:#111;color:#fff;}
 .call-stage iframe{width:100%!important;height:100%!important;border:0;}
@@ -473,9 +473,18 @@ textarea.field:focus{border-color:var(--moss);}
 .note-rich-editor{flex:1;min-height:220px;padding:18px;border:1px solid var(--border);border-radius:12px;background:var(--paper);color:var(--ink);overflow:auto;outline:none;font:400 14px/1.65 Inter,sans-serif;}
 .note-rich-editor:focus{border-color:var(--moss);box-shadow:0 0 0 3px rgba(91,139,99,.12);}
 .note-draw-panel{position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff;}
-.note-draw-viewport{position:absolute;inset:0;overflow:auto;background:#fff;}
-#note-draw-canvas{display:block;width:100%;height:100%;min-width:100%;min-height:100%;background:#fff;cursor:crosshair;touch-action:none;transform-origin:left top;}
+.note-draw-viewport{position:absolute;inset:0;overflow:auto;background:#fff;scrollbar-width:none;-ms-overflow-style:none;}
+.note-draw-viewport::-webkit-scrollbar{display:none;width:0;height:0;}
+#note-draw-canvas{display:block;width:100%;height:100%;background:#fff;cursor:crosshair;touch-action:none;transform-origin:left top;}
 .whiteboard-toolbar,.whiteboard-zoom{position:absolute;z-index:12;display:flex;align-items:center;gap:5px;padding:6px;border:1px solid #ddd;border-radius:11px;background:rgba(255,255,255,.96);box-shadow:0 5px 20px rgba(0,0,0,.14);color:#242424;}
+.note-area-tools{position:absolute;top:12px;left:12px;z-index:2;display:flex;flex-wrap:wrap;gap:5px;max-width:calc(100% - 144px);padding:7px;border:1px solid var(--border);border-radius:10px;background:var(--paper);box-shadow:0 3px 12px #0001;}
+.note-area-tools button{font:600 11px 'Inter',sans-serif;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--paper);color:var(--ink);cursor:pointer;}
+.note-area-tools button[aria-pressed="true"]{background:var(--forest);color:var(--paper);}
+.note-area-tools button:disabled{opacity:.45;cursor:default;}
+.note-area-tools button:focus-visible{outline:2px solid var(--forest);outline-offset:2px;}
+.note-area-hint{flex-basis:100%;font-size:11px;line-height:1.4;color:var(--text-2);}
+.note-area-hint:empty{display:none;}
+@media(max-width:720px){.note-area-tools{top:54px;max-width:calc(100% - 24px);}.note-area-tools button{padding:8px;}}
 .whiteboard-toolbar{left:50%;bottom:12px;transform:translateX(-50%);}.whiteboard-zoom{right:12px;bottom:12px;}
 .whiteboard-tool{width:34px;height:34px;border:0;border-radius:7px;background:transparent;color:#222;display:grid;place-items:center;cursor:pointer;}
 .whiteboard-tool:hover,.whiteboard-tool.active{background:#ececec;box-shadow:inset 0 0 0 1px #b8b8b8;}
@@ -1011,10 +1020,10 @@ footer{margin:50px 0 20px;padding-top:20px;border-top:1px solid var(--border);
 /* tela de login */
 #login-screen{
   position:fixed;inset:0;background:var(--parchment);display:flex;align-items:center;justify-content:center;
-  padding:20px;z-index:100;overflow:hidden;
+  padding:20px;z-index:100;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;
 }
 #login-screen.hidden{display:none;}
-.login-card{width:100%;max-width:340px;max-height:100%;overflow-y:auto;}
+.login-card{width:100%;max-width:460px;overflow:visible;}
 .login-logo-wrap{width:64px;height:64px;border-radius:16px;overflow:hidden;margin:0 auto 16px;}
 .login-logo{display:block;width:100%;height:100%;object-fit:cover;}
 .login-card h1{font-size:19px;margin-bottom:4px;}
@@ -1186,7 +1195,7 @@ body.composer-focused .note-card{
   .modal-head{padding:12px;}
   .modal-body{padding:12px;}
   .dm-thread-box{height:min(78dvh,640px);}
-  .call-modal-box{width:100%;max-width:480px;}
+  .call-modal-box{width:100%;max-width:440px;}
   .call-stage{min-height:170px;}
   .dm-messages{padding:12px 10px;}
   .dm-bubble{max-width:86%;}
@@ -1453,7 +1462,7 @@ body.composer-focused .note-card{
   #note-card{right:10px;bottom:calc(80px + env(safe-area-inset-bottom,0px));width:calc(100vw - 20px)}
   footer{padding-bottom:14px;flex-direction:column;gap:8px;text-align:center}.forget-toast,.success-toast,#db-error-toast{bottom:calc(84px + env(safe-area-inset-bottom,0px));width:calc(100vw - 24px)}
 }
-@media (max-width:480px){
+@media (max-width:440px){
   .brand-row h1{font-size:18px}.brand-row>div{max-width:calc(100vw - 68px)}.brand-row p{font-size:10.5px}.brand-version{font-size:7px}
   .header-actions{grid-template-columns:repeat(5,1fr)}.header-actions>.icon-btn,.header-actions>.header-more>.icon-btn{width:min(17vw,54px);border-radius:13px}
   .work-nav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis}.card{padding:11px;overflow:visible}
@@ -1937,7 +1946,7 @@ html[data-theme="dark"]{--ink:#E8F1FA;--forest:#62B7EC;--forest-d:#8CCBF2;--moss
 html[data-theme="black"]{--ink:#E8F1FA;--forest:#6DBDF0;--forest-d:#9CD3F5;--moss:#71CFD9;--on-accent:#0A0A0A;--sage:#102535;--parchment:#000000;--paper:#0A0A0A;--border:#233746;--text-2:#ACC2D3;--text-3:#8BA4B8;}
 html[data-theme="dark"] .btn-primary,html[data-theme="black"] .btn-primary{color:var(--on-accent);}
 #login-screen{overflow-y:auto;align-items:flex-start;gap:clamp(24px,5vw,72px);padding:clamp(24px,6vw,80px);background:radial-gradient(ellipse at top left,rgba(38,132,155,.10),transparent 60%),var(--parchment);}
-.lab-intro{max-width:600px;min-width:0;margin:auto 0;}.lab-eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--forest);}.lab-intro h2{font-size:clamp(32px,4vw,52px);line-height:1.12;margin:16px 0;letter-spacing:-.04em;}.lab-intro p,.lab-overview p{font-size:14px;line-height:1.7;color:var(--text-2);}.lab-intro .lab-lead{font-size:16px;}.lab-units{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:24px 0;}.lab-unit{padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--paper);}.lab-unit strong{color:var(--forest);}.lab-unit p{margin:6px 0 0;font-size:12px;}.lab-links{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0;}.lab-links a{font-size:12px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--paper);text-decoration:none;}.lab-links a:hover{border-color:var(--forest);color:var(--forest);}.lab-links a:focus-visible{outline:3px solid var(--moss);outline-offset:3px;}.lab-intro address{font-size:12px;line-height:1.7;font-style:normal;color:var(--text-2);margin-top:24px;}.lab-intro .lab-source{font-size:11px;}.login-card{flex:0 0 340px;margin:auto 0;max-height:none;}.lab-overview{padding:20px;margin:0 0 22px;border:1px solid var(--border);border-radius:16px;background:var(--paper);}.lab-overview h2{font-size:20px;}.lab-overview summary{cursor:pointer;font-size:12px;color:var(--forest);}.lab-overview .lab-source{font-size:11px;color:var(--text-2);}
+.lab-intro{max-width:600px;min-width:0;margin:auto 0;}.lab-eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--forest);}.lab-intro h2{font-size:clamp(32px,4vw,52px);line-height:1.12;margin:16px 0;letter-spacing:-.04em;}.lab-intro p,.lab-overview p{font-size:14px;line-height:1.7;color:var(--text-2);}.lab-intro .lab-lead{font-size:16px;}.lab-units{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:24px 0;}.lab-unit{padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--paper);}.lab-unit strong{color:var(--forest);}.lab-unit p{margin:6px 0 0;font-size:12px;}.lab-links{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0;}.lab-links a{font-size:12px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--paper);text-decoration:none;}.lab-links a:hover{border-color:var(--forest);color:var(--forest);}.lab-links a:focus-visible{outline:3px solid var(--moss);outline-offset:3px;}.lab-intro address{font-size:12px;line-height:1.7;font-style:normal;color:var(--text-2);margin-top:24px;}.lab-intro .lab-source{font-size:11px;}.login-card{flex:0 1 460px;margin:auto 0;max-height:none;}.lab-overview{padding:20px;margin:0 0 22px;border:1px solid var(--border);border-radius:16px;background:var(--paper);}.lab-overview h2{font-size:20px;}.lab-overview summary{cursor:pointer;font-size:12px;color:var(--forest);}.lab-overview .lab-source{font-size:11px;color:var(--text-2);}
 @media(max-width:800px){#login-screen{flex-direction:column;align-items:center;}.lab-intro{margin:0;}.login-card{flex:none;max-width:600px;margin:0;}.lab-intro h2{font-size:34px;}}
 @media(max-width:400px){.lab-units{grid-template-columns:1fr;}}
 
@@ -1976,11 +1985,14 @@ html[data-theme="dark"] .btn-primary,html[data-theme="black"] .btn-primary{color
   #login-screen::before,#login-screen .lab-intro *,#login-screen .login-card,#login-screen .login-logo{animation:none!important;}
   #login-screen .lab-unit,#login-screen .btn-primary{transition:none;transform:none!important;}
 }
-/* Entrada compacta: ocupa a janela sem barras de rolagem. */
+/* A tela de entrada rola como uma pagina, sem rolagem interna no formulario. */
 body:has(#login-screen:not(.hidden)){overflow:hidden;}
-#login-screen{height:100dvh;align-items:center;padding:clamp(16px,3vh,32px) clamp(20px,4vw,56px);gap:clamp(20px,4vw,56px);scrollbar-width:none;}
-#login-screen::-webkit-scrollbar,.login-card::-webkit-scrollbar{display:none;}
-.login-card{max-height:100%;scrollbar-width:none;}
+#login-screen{height:100dvh;align-items:flex-start;padding:clamp(16px,3vh,32px) clamp(20px,4vw,56px);gap:clamp(20px,4vw,56px);scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+#login-screen::-webkit-scrollbar{width:5px;}
+#login-screen::-webkit-scrollbar-track{background:transparent;}
+#login-screen::-webkit-scrollbar-thumb{background:var(--border);border-radius:999px;}
+.login-card::-webkit-scrollbar{display:none;}
+.login-card{max-height:none;overflow:visible;scrollbar-width:none;}
 @media(min-width:801px) and (max-height:760px){
   .lab-intro h2{font-size:36px;margin:10px 0;}
   .lab-intro p{font-size:13px;line-height:1.5;margin:10px 0;}
@@ -1991,16 +2003,16 @@ body:has(#login-screen:not(.hidden)){overflow:hidden;}
   .lab-intro .lab-source{font-size:10px;}
 }
 @media(max-width:800px){
-  #login-screen{justify-content:center;gap:16px;}
-  .lab-intro{width:100%;max-width:420px;flex:none;}
+  #login-screen{justify-content:flex-start;gap:16px;}
+  .lab-intro{width:100%;max-width:440px;flex:none;margin-top:auto;}
   .lab-intro h2{font-size:25px;margin:8px 0 0;}
   .lab-intro .lab-lead,.lab-intro .lab-units,.lab-intro>p,.lab-intro address,.lab-intro .lab-links{display:none;}
-  .login-card{width:100%;max-width:420px;flex:0 1 auto;min-height:0;}
+  .login-card{width:100%;max-width:460px;flex:none;min-height:0;margin-bottom:auto;}
 }
 @media(max-height:580px){
   #login-screen{padding:12px 20px;gap:12px;}
   .lab-intro{display:none;}
-  .login-card{margin:0;flex:0 1 380px;padding:16px;}
+  .login-card{margin:auto 0;flex:none;width:100%;max-width:460px;padding:16px;}
   .login-logo-wrap{width:40px;height:40px;margin-bottom:8px;}
   .login-card p{margin-bottom:10px;}
   .login-form{gap:7px;}
@@ -2088,7 +2100,7 @@ html:is([data-theme="dark"],[data-theme="black"]) #login-screen::after{opacity:.
 .post-attachment-picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;}.post-attachment-picker small,.attachment-status{font-size:11px;color:var(--text-2);}.attachment-status:empty{display:none;}.attachment-previews{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;}.attachment-preview{display:flex;flex-direction:column;gap:6px;min-width:0;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--parchment);}.attachment-preview>img,.attachment-preview>video{width:100%;height:110px;object-fit:contain;border-radius:8px;background:var(--sage);}.attachment-preview>span:not(.attachment-pdf-icon){font-size:12px;overflow-wrap:anywhere;}.attachment-preview small{font-size:10px;color:var(--text-2);}.attachment-pdf-icon{display:inline-flex;align-items:center;justify-content:center;min-height:64px;min-width:56px;border-radius:10px;background:var(--sage);color:var(--forest);font-weight:700;letter-spacing:.06em;}.post-attachments{display:grid;gap:12px;margin:12px 0 12px 37px;}.post-attachment{margin:0;min-width:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--parchment);}.post-attachment>a:not(.post-pdf-link){display:block;}.post-attachment img,.post-attachment video{display:block;width:100%;max-height:420px;object-fit:contain;background:var(--sage);}.post-attachment figcaption{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;font-size:11px;}.post-attachment figcaption span{min-width:0;overflow-wrap:anywhere;color:var(--text-2);}.post-attachment figcaption a{flex:none;color:var(--forest);}.post-pdf-link{display:flex;align-items:center;gap:14px;padding:14px;text-decoration:none;font-size:13px;}.post-attachment video:focus-visible,.post-attachment a:focus-visible{outline:3px solid var(--moss);outline-offset:-3px;}@media(max-width:600px){.post-attachments{margin-left:0;}.attachment-previews{grid-template-columns:repeat(2,minmax(0,1fr));}}
 .composer-tools{display:flex;align-items:center;gap:3px;padding:8px 0;margin:4px 0;overflow:visible;}.composer-tools .composer-tool{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;min-height:0;margin:0;padding:8px;border:0;border-radius:50%;background:transparent;color:var(--forest);cursor:pointer;transition:background .15s ease;}.composer-tool svg{display:block;width:20px;height:20px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round;}.composer-tools .composer-tool:hover,.composer-tools .composer-tool[aria-expanded="true"]{background:color-mix(in srgb,var(--forest) 12%,transparent);}.composer-tool:focus-visible{outline:2px solid var(--forest);outline-offset:2px;}.composer-tool:disabled{opacity:.4;cursor:default;}.composer-tool::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 7px);left:0;z-index:250;max-width:220px;width:max-content;padding:6px 9px;border-radius:6px;background:#172a3a;color:#fff;font:500 11px/1.4 'Inter',sans-serif;white-space:normal;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .12s ease;}.composer-tool:hover::after,.composer-tool:focus-visible::after{opacity:1;visibility:visible;}.post-emoji-picker{display:flex;flex-wrap:wrap;gap:4px;width:260px;max-width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--paper);box-shadow:0 6px 20px rgba(0,0,0,.08);margin-bottom:10px;}.post-emoji-picker[hidden]{display:none;}.post-emoji-picker button{width:36px;height:36px;border:0;background:transparent;border-radius:8px;font-size:21px;}.post-emoji-picker button:hover,.post-emoji-picker button:focus-visible{background:var(--sage);}@media(pointer:coarse){.composer-tools .composer-tool{flex-basis:42px;width:42px;height:42px;}}
 .demand-group-title{flex:0 0 auto;margin:16px 0 8px;font-size:13px;font-weight:600;line-height:1.4;color:var(--ink);}.demand-group-title label{cursor:pointer;}
-.demand-deleted-section{margin:14px 0;border-top:1px solid var(--border);padding-top:8px;flex:0 0 auto;}.demand-deleted-section summary{cursor:pointer;padding:10px 4px;font-size:12px;font-weight:600;color:var(--text-2);}.demand-deleted-section .item{align-items:center;}.demand-deleted-section .item-text{opacity:.8;}.demand-deleted-section .item-meta{line-height:1.6;}.demand-deleted-section .btn{flex:none;}@media(max-width:480px){.demand-deleted-section .item{flex-wrap:wrap;}.demand-deleted-section .btn{margin-left:auto;}}
+.demand-deleted-section{margin:14px 0;border-top:1px solid var(--border);padding-top:8px;flex:0 0 auto;}.demand-deleted-section summary{cursor:pointer;padding:10px 4px;font-size:12px;font-weight:600;color:var(--text-2);}.demand-deleted-section .item{align-items:center;}.demand-deleted-section .item-text{opacity:.8;}.demand-deleted-section .item-meta{line-height:1.6;}.demand-deleted-section .btn{flex:none;}@media(max-width:440px){.demand-deleted-section .item{flex-wrap:wrap;}.demand-deleted-section .btn{margin-left:auto;}}
 .header-search{position:relative;flex:1 1 240px;min-width:160px;max-width:370px;margin:0 14px;}.header-search>svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:18px;height:18px;stroke:var(--text-2);fill:none;stroke-width:1.8;pointer-events:none;}.header-search input{display:block;width:100%;height:40px;padding:0 52px 0 40px;border:1px solid var(--border);border-radius:999px;background:var(--parchment);color:var(--ink);font:12px 'Inter',sans-serif;}.header-search input:focus{outline:2px solid var(--forest);outline-offset:1px;background:var(--paper);}.header-search kbd{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:9px;color:var(--text-3);pointer-events:none;}#wrap-app .header-top{height:auto;min-height:50px;}#wrap-app .brand-row{min-width:0;flex:1 1 220px;}#wrap-app .brand-row p{max-width:300px;}#wrap-app .header-actions{flex:0 0 auto;}.global-search-panel{position:fixed;z-index:190;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--border);border-radius:18px;background:var(--paper);color:var(--ink);box-shadow:0 18px 60px rgba(0,0,0,.2);}.global-search-panel[hidden]{display:none;}.global-search-heading{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;gap:10px;}.global-search-heading strong{font-size:14px;}.global-search-heading button{width:30px;height:30px;border:0;border-radius:50%;background:var(--sage);color:var(--ink);font-size:20px;}.global-search-tabs{display:flex;flex:none;gap:4px;overflow-x:auto;padding:0 12px 8px;border-bottom:1px solid var(--border);scrollbar-width:thin;}.global-search-tabs button{flex:none;border:0;border-bottom:2px solid transparent;padding:9px 10px;background:transparent;color:var(--text-2);font-size:12px;font-weight:600;white-space:nowrap;}.global-search-tabs button[aria-selected="true"]{color:var(--forest);border-bottom-color:var(--forest);}.global-search-filters{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;flex-wrap:wrap;}.global-search-filters select{border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--parchment);color:var(--ink);font:11px 'Inter',sans-serif;}.global-search-filters p{margin:0;font-size:11px;color:var(--text-2);}.global-search-results{overflow:auto;overscroll-behavior:contain;min-height:70px;padding:0 8px 12px;}.global-search-results h3{font-size:12px;padding:12px 10px 6px;color:var(--text-2);}.global-search-result{display:flex;flex-direction:column;text-align:left;gap:5px;width:100%;border:0;border-radius:10px;padding:12px;background:transparent;text-decoration:none;color:var(--ink);overflow-wrap:anywhere;}.global-search-result:hover,.global-search-result:focus-visible{background:var(--sage);}.global-search-result:focus-visible,.global-search-tabs button:focus-visible{outline:2px solid var(--forest);outline-offset:-2px;}.global-search-result strong{font-size:13px;}.global-search-result>span{font-size:12px;line-height:1.5;}.global-search-result small{font-size:10px;color:var(--text-2);}.global-search-empty{padding:12px;font-size:12px;color:var(--text-2);}.global-search-label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}@media(min-width:721px) and (max-width:1050px){.header-search{margin-inline:8px;min-width:150px;}.header-search kbd{display:none;}.header-search input{padding-right:12px;}#wrap-app .brand-row{flex-basis:170px;}#wrap-app .brand-row h1{font-size:16px;}}@media(max-width:720px){#wrap-app .header-top{display:flex;flex-wrap:wrap;gap:10px;}#wrap-app .brand-row{flex:1 1 180px;}#wrap-app .header-actions{flex:0 0 auto;margin:0;}.header-search{order:3;flex:1 1 100%;max-width:none;margin:0 0 4px;}#wrap-app .brand-row p{font-size:10px;}.header-search input{font-size:16px;}.global-search-panel{border-radius:12px;}}
 /* Busca global: hierarquia visual, estados úteis e resultados compactos. */
 .global-search-panel{border-radius:20px;border-color:color-mix(in srgb,var(--forest) 18%,var(--border));box-shadow:0 24px 80px rgba(15,40,65,.19),0 3px 12px rgba(15,40,65,.06);}.global-search-heading{padding:20px 22px 16px;background:linear-gradient(120deg,color-mix(in srgb,var(--sage) 65%,var(--paper)),var(--paper));}.search-heading-copy{display:flex;flex-direction:column;gap:5px;}.search-heading-copy>span{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--forest);}.global-search-heading strong{font-family:'Space Grotesk',sans-serif;font-size:20px;letter-spacing:-.035em;}.global-search-heading button{background:var(--paper);border:1px solid var(--border);color:var(--text-2);transition:background .15s ease;}.global-search-heading button:hover{background:var(--sage);}.global-search-tabs{gap:5px;padding:8px 18px 14px;border:0;}.global-search-tabs button{border:1px solid transparent;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:600;transition:background .15s ease;}.global-search-tabs button:hover{background:var(--parchment);}.global-search-tabs button[aria-selected="true"]{border-color:color-mix(in srgb,var(--forest) 18%,var(--border));background:var(--sage);color:var(--forest);}.global-search-filters{margin:0 20px;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}.search-filter-label{display:inline-flex;align-items:center;gap:8px;color:var(--text-2);font-size:11px;}.search-filter-label>svg{width:15px;height:15px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;}.global-search-filters select{padding:7px 28px 7px 10px;background:var(--paper);font-weight:500;}.global-search-filters p{font-size:10px;}.global-search-results{padding:8px 14px 12px;}.global-search-results h3{display:flex;align-items:center;gap:8px;padding:14px 10px 8px;font-size:11px;font-weight:700;color:var(--ink);}.search-group-count{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:19px;padding:0 5px;border-radius:6px;background:var(--sage);color:var(--forest);font-size:10px;}.global-search-result{flex-direction:row;align-items:flex-start;gap:12px;padding:13px 10px;border:1px solid transparent;}.global-search-result:hover,.global-search-result:focus-visible{background:var(--parchment);border-color:var(--border);}.search-result-icon{display:flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;border:1px solid var(--border);border-radius:11px;background:var(--paper);color:var(--forest);}.search-result-icon svg,.search-empty-icon svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}.search-result-copy{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1;}.search-result-copy>strong{font-size:13px;line-height:1.4;}.search-result-copy>span{font-size:12px;line-height:1.5;color:var(--text-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}.search-result-copy>small{font-size:10px;color:var(--text-3);}.search-result-arrow{color:var(--text-3);font-size:17px;margin-top:5px;}.search-empty-state{display:flex;flex-direction:column;align-items:center;text-align:center;padding:24px 20px 30px;gap:9px;}.search-empty-icon{display:flex;align-items:center;justify-content:center;width:52px;height:52px;margin-bottom:3px;border-radius:17px;color:var(--forest);background:linear-gradient(145deg,var(--sage),var(--parchment));border:1px solid var(--border);}.search-empty-icon svg{width:23px;height:23px;}.search-empty-state h4{margin:0;font:600 16px 'Space Grotesk',sans-serif;letter-spacing:-.02em;}.search-empty-state p{max-width:330px;margin:0;font-size:12px;line-height:1.7;color:var(--text-2);}.search-empty-state.is-loading .search-empty-icon{animation:search-pulse 1.2s ease-in-out infinite alternate;}.search-panel-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex:none;padding:10px 22px;border-top:1px solid var(--border);background:var(--parchment);font-size:10px;color:var(--text-2);}.search-panel-footer>span{display:inline-flex;align-items:center;gap:5px;}.search-panel-footer kbd{padding:2px 5px;border:1px solid var(--border);border-radius:4px;background:var(--paper);font:9px 'Inter',sans-serif;color:var(--text-2);}@keyframes search-pulse{to{opacity:.45;transform:scale(.94);}}@media(prefers-reduced-motion:reduce){.search-empty-state.is-loading .search-empty-icon{animation:none;}}@media(max-width:520px){.global-search-panel{border-radius:15px;}.global-search-heading{padding:16px;}.global-search-heading strong{font-size:18px;}.global-search-tabs{padding-inline:12px;}.global-search-filters{margin-inline:16px;}.global-search-results{padding-inline:8px;}.search-panel-footer{padding-inline:16px;}.search-panel-footer>span:last-child{display:none;}.search-empty-state{padding:22px 12px;}}
@@ -2537,6 +2549,62 @@ html:has(#wrap-app:not(.hidden))::-webkit-scrollbar{display:none;width:0;}
 .site-authorship span{display:block;}
 #wrap-app>footer .site-authorship{flex-basis:100%;margin:0;}
 #login-screen .site-authorship{text-align:center;}
+/* Formulario compacto, com todos os controles acessiveis. */
+#login-screen .login-card{padding:20px;}
+#login-screen .login-logo-wrap{width:120px;height:120px;margin-bottom:8px;}
+#login-screen .login-card h1{font-size:18px;margin-bottom:4px;}
+#login-screen .login-card p{margin-bottom:10px;}
+#login-screen .login-form{gap:8px;}
+#login-screen .login-toggle{margin-top:10px;}
+#login-screen .site-authorship{font-size:11px;line-height:1.4;margin:10px 0 0;}
+#login-screen .login-legal-links{margin-top:10px;padding-top:10px;gap:6px 12px;}
+@media(max-height:700px){
+  #login-screen{padding:12px 20px;gap:12px;}
+  #login-screen .login-logo-wrap{width:92px;height:92px;margin-bottom:6px;}
+  #login-screen .login-card{padding:16px 20px;}
+}
+@media(max-height:580px){
+  #login-screen .login-logo-wrap{width:64px;height:64px;}
+}
+/* No celular, a identidade do card evita repetir a apresentacao acima dele. */
+@media(max-width:800px){
+  #login-screen{padding:56px 16px 16px;gap:0;overflow-x:hidden;}
+  #login-screen .lab-intro{display:none;}
+  #login-screen .login-card{flex:none;width:100%;min-width:0;margin:auto 0;padding:16px 18px;}
+  #login-screen .login-logo-wrap{width:clamp(64px,14dvh,104px);height:clamp(64px,14dvh,104px);margin-bottom:6px;}
+  #login-screen .login-card p{margin-bottom:8px;}
+  #login-screen .login-form{gap:7px;}
+  #login-screen .login-legal-links{margin-top:8px;padding-top:8px;}
+}
+@media(max-width:800px) and (max-height:580px){
+  #login-screen{padding-top:52px;padding-bottom:10px;}
+  #login-screen .login-card{padding:12px 16px;}
+  #login-screen .login-logo-wrap{width:56px;height:56px;}
+}
+
+
+/* Tablets mantem apresentacao e acesso lado a lado. */
+@media(min-width:768px) and (max-width:1100px){
+  #login-screen{flex-direction:row;align-items:flex-start;justify-content:center;padding:32px 24px;gap:24px;}
+  #login-screen .lab-intro{display:block;flex:1;min-width:0;width:auto;max-width:600px;margin:auto 0;}
+  #login-screen .lab-intro h2{font-size:clamp(26px,3.4vw,38px);margin:12px 0;}
+  #login-screen .lab-intro .lab-lead{display:block;font-size:14px;}
+  #login-screen .lab-intro>p{display:block;font-size:12px;line-height:1.6;}
+  #login-screen .lab-intro .lab-units{display:grid;gap:10px;margin:18px 0;}
+  #login-screen .lab-unit{padding:12px;}
+  #login-screen .lab-unit p{font-size:11px;}
+  #login-screen .lab-intro .lab-links{display:flex;gap:6px;}
+  #login-screen .lab-links a{font-size:11px;padding:8px 10px;}
+  #login-screen .lab-intro address{display:block;font-size:11px;margin-top:16px;}
+  #login-screen .lab-intro .lab-source{font-size:10px;}
+  #login-screen .login-card{flex:0 0 clamp(300px,40vw,400px);width:clamp(300px,40vw,400px);max-width:400px;min-width:0;margin:auto 0;padding:18px;}
+}
+
+/* Card de acesso proporcional em telas desktop. */
+@media(min-width:1101px){
+  #login-screen .login-card{flex:0 1 380px;width:100%;max-width:380px;padding:20px;}
+}
+
 #wrap-app>footer{flex-wrap:wrap;gap:12px;}
 #wrap-app>footer .legal-links{flex-basis:100%;padding-top:4px;}
 .cookie-notice{position:fixed;bottom:max(18px,env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);z-index:750;display:flex;align-items:center;gap:20px;width:min(820px,calc(100vw - 32px));max-height:45dvh;overflow:auto;padding:20px 22px;border:1px solid var(--border);border-radius:16px;background:var(--paper);color:var(--ink);box-shadow:0 12px 44px rgba(0,0,0,.2);}
@@ -2714,7 +2782,7 @@ body.site-policy-open{overflow:hidden!important;}
           <svg viewBox="0 0 24 24"><path d="M7 8h10a4 4 0 0 1 3.8 5.3l-1.3 3.8a2.3 2.3 0 0 1-3.9.8L14 16h-4l-1.6 1.9a2.3 2.3 0 0 1-3.9-.8l-1.3-3.8A4 4 0 0 1 7 8z"/><path d="M8 11v4M6 13h4M16 12h.01M18 14h.01"/></svg>
         </button>
         <button class="icon-btn" id="my-space-btn" aria-label="Meu espaço" title="Meu espaço">
-          <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10M9 20v-6h6v6"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2Z"/></svg>
         </button>
         <div class="header-more">
           <button class="icon-btn" id="header-more-btn" type="button" aria-label="Mais opções" aria-expanded="false" aria-controls="header-more-menu">
@@ -2893,8 +2961,8 @@ body.site-policy-open{overflow:hidden!important;}
         <p class="profile-editor-hint">Informe seu papel e, separadamente, em qual laboratório ou equipe você atua.</p>
         <label class="field-label" for="profile-affiliation-input">Vínculo acadêmico ou profissional (obrigatório)</label>
         <select class="field" id="profile-affiliation-input"><option value="">Prefiro não informar</option><option value="undergraduate">Graduação</option><option value="scientific_initiation">Iniciação científica</option><option value="masters">Mestrado</option><option value="doctorate">Doutorado</option><option value="postdoc">Pós-doutorado</option><option value="researcher">Pesquisador(a)</option><option value="professor">Professor(a)</option><option value="technician">Equipe técnica</option><option value="collaborator">Colaborador(a)</option><option value="other">Outro vínculo</option></select>
-        <div class="field-label" id="profile-sector-label">Laboratórios e equipes (obrigatório)</div>
-        <p class="profile-editor-hint">Onde você atua: LACAM, LabNeuroMusc ou outra equipe. Você pode escolher mais de uma. Exemplo: vínculo Iniciação científica + laboratório LACAM.</p>
+        <div class="field-label" id="profile-sector-label">Laboratórios e equipes</div>
+        <p class="profile-editor-hint">O acesso aos laboratórios e equipes é liberado pela administração. Se sua unidade ainda não aparece, solicite a liberação. Você pode salvar seu perfil enquanto aguarda.</p>
         <div class="sector-picker" id="profile-sector-picker" role="group" aria-labelledby="profile-sector-label"></div>
         <div class="sector-picker-add">
           <input class="field" id="profile-sector-custom-input" placeholder="Adicionar outro setor...">
@@ -2960,7 +3028,6 @@ body.site-policy-open{overflow:hidden!important;}
         <p class="view-profile-bio" id="view-profile-bio"></p>
         <button class="btn" id="view-profile-edit-btn" type="button" hidden>Editar meu perfil</button>
         <button class="btn btn-primary" id="view-profile-message-btn" type="button" style="margin-top:14px;">Mandar mensagem</button>
-        <button class="btn" id="view-profile-support-btn" type="button" style="margin-top:10px;width:100%;display:none;"></button>
         <button class="btn" id="view-profile-ban-btn" type="button" style="margin-top:10px;width:100%;display:none;"></button>
         </aside>
         <div class="profile-overview" id="view-profile-overview"></div>
@@ -3262,7 +3329,7 @@ body.site-policy-open{overflow:hidden!important;}
 
   <div class="modal-overlay hidden" id="note-studio-modal" role="dialog" aria-modal="true" aria-label="Editor de notas">
     <div class="modal-box note-studio-box">
-      <div class="modal-head"><div><strong>Editor de notas</strong><span id="note-studio-title">Nota atual</span></div><div class="note-studio-head-actions"><div class="note-mode-switch" aria-label="Modo do editor"><button class="note-mode-btn active" id="note-mode-text" type="button" title="Editar texto" aria-label="Editar texto"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></svg></button><button class="note-mode-btn" id="note-mode-draw" type="button" title="Abrir área de desenho" aria-label="Abrir área de desenho"><svg viewBox="0 0 24 24"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20zM13.5 8l3 3"/></svg></button></div><button class="note-back-btn" id="note-studio-close" type="button" aria-label="Voltar ao bloco de notas" title="Voltar ao bloco de notas"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span>Voltar</span></button></div></div>
+      <div class="modal-head"><div><strong>Editor de notas</strong><span id="note-studio-title">Nota atual</span></div><div class="note-studio-head-actions"><div class="note-mode-switch" aria-label="Modo do editor"><button class="note-mode-btn active" id="note-mode-text" type="button" title="Editar texto" aria-label="Editar texto"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></svg></button><button class="note-mode-btn" id="note-mode-draw" type="button" title="Abrir área de desenho" aria-label="Abrir área de desenho"><svg viewBox="0 0 24 24"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20zM13.5 8l3 3"/></svg></button></div><button class="note-back-btn note-fullscreen-button" id="note-studio-fullscreen" type="button" aria-label="Entrar em tela cheia" aria-pressed="false" title="Entrar em tela cheia"><svg class="fullscreen-enter" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/></svg><svg class="fullscreen-exit" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h5V3M21 8h-5V3M16 21v-5h5M8 21v-5H3"/></svg></button><button class="note-back-btn" id="note-studio-close" type="button" aria-label="Voltar ao bloco de notas" title="Voltar ao bloco de notas"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span>Voltar</span></button></div></div>
       <div class="modal-body note-studio-body" id="note-studio-body" data-mode="text">
         <div class="note-format-bar" id="note-format-bar">
           <button class="note-format-btn" type="button" data-note-command="bold" title="Negrito">B</button><button class="note-format-btn" type="button" data-note-command="italic" title="Itálico"><i>I</i></button><button class="note-format-btn" type="button" data-note-command="underline" title="Sublinhado"><u>U</u></button>
@@ -3358,6 +3425,7 @@ body.site-policy-open{overflow:hidden!important;}
 <link rel="stylesheet" href="assets/message-menu.css">
 <link rel="stylesheet" href="assets/post-navigation.css">
 <link rel="stylesheet" href="assets/note-document.css">
+<link rel="stylesheet" href="assets/note-drawing-toolbar.css">
 <link rel="stylesheet" href="assets/header-tooltips.css">
 <link rel="stylesheet" href="assets/first-post-celebration.css">
 <link rel="stylesheet" href="assets/achievements.css">
@@ -3376,6 +3444,7 @@ import { initializePostMediaViewer } from './assets/post-media-viewer.js';
 import { renderProfileActivity } from './assets/profile-activity.js';
 import { initializeGameRanking } from './assets/game-ranking.js';
 import { initializeMines } from './assets/mines-game.js';
+import { initializeNoteFullscreen } from './assets/note-fullscreen.js';
 import { initializeCallFullscreen } from './assets/call-fullscreen.js';
 import { initializeAdministration } from './assets/administration.js';
 import { initializeSettings, initializeMediaPreferences, prefersReducedMotion } from './assets/hub-preferences.js';
@@ -3396,6 +3465,11 @@ import { editContactNickname } from './assets/contact-nickname.js';
 import { initializeMessageMenu, animateMessageRemoval } from './assets/message-menu.js';
 import { postMatchesMediaType, attachmentMatchesType } from './assets/mural-media-filter.js';
 import { initializeNoteDocumentTools, sanitizeNoteHtml } from './assets/note-document.js';
+import { defaultWhiteboardSettings, normalizeWhiteboardSettings, whiteboardKey, pointInLasso, boundsOfPoints, recognizedInk, drawWhiteboardBackground, drawWhiteboardSolid, resizeWhiteboardObjects } from './assets/note-whiteboard-model.js';
+import { openWhiteboardSettings } from './assets/note-whiteboard-settings.js';
+import { downloadWhiteboard, canvasPDF, loadWhiteboardPDF, loadWhiteboardImage } from './assets/note-whiteboard-files.js';
+import { initializeDrawingToolbar } from './assets/note-drawing-toolbar.js';
+import { drawingRect, containsDrawingPoint, drawingSize, drawingShortcut } from './assets/note-drawing-area.js';
 import { initializeCompactNoteEditor } from './assets/note-compact-editor.js';
 import { initializeHeaderTooltips } from './assets/header-tooltips.js';
 import { initializeFirstPostCelebration } from './assets/first-post-celebration.js';
@@ -3474,6 +3548,7 @@ const noteCardLabel = document.getElementById('note-card-label');
 const openNoteStudioBtn = document.getElementById('open-note-studio-btn');
 const noteStudioModal = document.getElementById('note-studio-modal');
 const noteStudioClose = document.getElementById('note-studio-close');
+initializeNoteFullscreen({modal:noteStudioModal,button:document.getElementById('note-studio-fullscreen')});
 const noteStudioTitle = document.getElementById('note-studio-title');
 const noteStudioBody = document.getElementById('note-studio-body');
 const noteModeText = document.getElementById('note-mode-text');
@@ -3491,6 +3566,18 @@ if(noteToolbar){
   const eraserButton = noteToolbar.querySelector('#note-draw-eraser');
   eraserButton?.insertAdjacentHTML('afterend', `<select class="whiteboard-select" id="note-eraser-mode" title="Modo da borracha"><option value="partial">Apagar parcial</option><option value="stroke">Traço inteiro</option></select><select class="whiteboard-select" id="note-shape-tool" title="Adicionar forma"><option value="none">Forma</option><option value="line">Linha</option><option value="rect">Retângulo</option><option value="ellipse">Elipse</option></select>`);
 }
+noteToolbar.insertAdjacentHTML('beforebegin', `<div class="note-area-tools" aria-label="Recorte e seleção do desenho">
+  <button type="button" data-area-tool="area" aria-pressed="false">Selecionar área</button>
+  <button type="button" data-area-tool="crop" aria-pressed="false">Recortar bordas</button>
+  <button type="button" data-area-action="crop" disabled>Aplicar recorte</button>
+  <button type="button" data-area-action="copy" disabled>Copiar</button>
+  <button type="button" data-area-action="paste" disabled>Colar</button>
+  <button type="button" data-area-action="delete" disabled>Apagar área</button>
+  <button type="button" data-area-action="cancel" disabled>Cancelar seleção</button>
+  <span class="note-area-hint" role="status" aria-live="polite"></span>
+</div>`);
+const noteAreaTools = document.querySelector('.note-area-tools');
+const noteAreaHint = noteAreaTools.querySelector('.note-area-hint');
 const noteDrawCanvas = document.getElementById('note-draw-canvas');
 const noteDrawColor = document.getElementById('note-draw-color');
 const noteDrawPan = document.getElementById('note-draw-pan');
@@ -3501,6 +3588,13 @@ const noteShapeTool = document.getElementById('note-shape-tool');
 const noteDrawSize = document.getElementById('note-draw-size');
 const noteDrawClear = document.getElementById('note-draw-clear');
 const noteDrawUndo = document.getElementById('note-draw-undo');
+noteDrawUndo.title='Desfazer (Ctrl+Z)';
+noteDrawUndo.insertAdjacentHTML('afterend','<button class="whiteboard-tool" id="note-draw-redo" type="button" title="Refazer (Ctrl+Y)" aria-label="Refazer"><svg viewBox="0 0 24 24"><path d="m15 7 5 5-5 5M19 12h-8a6 6 0 0 0-6 6"/></svg></button>');
+const noteDrawRedo=document.getElementById('note-draw-redo');
+noteDrawCanvas.tabIndex=0;
+noteDrawCanvas.setAttribute('aria-label','Quadro de desenho. Ctrl+C copia a área selecionada; Ctrl+V cola; Ctrl+Z desfaz; Ctrl+Y refaz.');
+noteAreaTools.querySelector('[data-area-action="copy"]').title='Copiar área (Ctrl+C)';
+noteAreaTools.querySelector('[data-area-action="paste"]').title='Colar área (Ctrl+V)';
 const noteDrawPen = document.getElementById('note-draw-pen');
 const noteDrawEraser = document.getElementById('note-draw-eraser');
 const noteDrawViewport = document.getElementById('note-draw-viewport');
@@ -4284,6 +4378,9 @@ function updateActiveTabContent(){
 let noteSavedRange = null;
 let noteDrawing = false;
 let noteDrawTool = 'pen';
+let noteDrawingToolbar=null;
+let noteLineStyle='solid';
+let noteLogoTemplate=null;
 let noteDrawZoom = 1;
 let noteDrawObjects = [];
 let noteDrawCurrent = null;
@@ -4292,40 +4389,219 @@ let notePointerStart = null;
 let notePanStart = null;
 let noteLegacyImage = null;
 const noteDrawHistory = new Map();
+const noteDrawRedoHistory = new Map();
+let noteDrawPendingHistory = null;
+let noteAreaRect = null, noteAreaStart = null, noteAreaMoving = false;
+let noteAreaClipboard = null;
+let noteEraseCanvas = null;
+const noteBitmapCache = new Map();
+let noteBoardSettings=defaultWhiteboardSettings();
+let noteSaveBoardPreferences=()=>{};
+let noteSelectedIds=new Set(),noteSelectionClipboard=null,noteResizeDrag=null;
+let noteLassoPoints=[],noteHeldKeys=new Set(),notePanHeld=false;
+let noteRecognitionTimer=null,noteRecognitionLocked=false,noteForceLine=false;
+let noteLaserPoints=[],noteLaserFrame=null;
+const noteTouchPointers=new Map();
+let noteTouchGesture=null,noteTouchCheckpoint=null,noteGestureFrame=null,notePenPointer=null;
+function cancelNoteTouchDrawing(){
+  clearTimeout(noteRecognitionTimer);noteDrawing=false;noteDrawCurrent=null;notePanStart=null;noteResizeDrag=null;noteLassoPoints=[];
+  if(noteTouchCheckpoint){noteDrawObjects=cloneNoteObjects(noteTouchCheckpoint.state.objects);noteLegacyImage=noteTouchCheckpoint.legacy;}
+  noteEraseCanvas=null;noteDrawPendingHistory=null;clearNoteArea();setNoteSelection([]);renderNoteDrawing();
+}
+function noteTouchGeometry(){const [a,b]=[...noteTouchPointers.values()];if(!a||!b)return null;return {x:(a.x+b.x)/2,y:(a.y+b.y)/2,distance:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y))};}
+function updateNoteTouchGesture(){
+  noteGestureFrame=null;const current=noteTouchGeometry();if(!noteTouchGesture||!current)return;
+  const bounds=noteDrawViewport.getBoundingClientRect();
+  noteDrawZoom=Math.max(.25,Math.min(4,noteTouchGesture.zoom*current.distance/noteTouchGesture.distance));applyNoteDrawZoom();
+  noteDrawViewport.scrollLeft=noteTouchGesture.worldX*noteDrawZoom-(current.x-bounds.left);
+  noteDrawViewport.scrollTop=noteTouchGesture.worldY*noteDrawZoom-(current.y-bounds.top);renderNoteDrawing();
+}
+function noteSelection(){return noteDrawObjects.filter(o=>noteSelectedIds.has(o.id)||o.id===noteSelectedObjectId);}
+function noteSelectionBounds(objects=noteSelection()){
+  if(!objects.length)return null;
+  const bounds=objects.map(noteObjectBounds);return {x1:Math.min(...bounds.map(b=>b.x1)),y1:Math.min(...bounds.map(b=>b.y1)),x2:Math.max(...bounds.map(b=>b.x2)),y2:Math.max(...bounds.map(b=>b.y2))};
+}
+function setNoteSelection(ids){noteSelectedIds=new Set(ids);noteSelectedObjectId=ids[0]||null;updateNoteAreaTools();renderNoteDrawing();}
+function noteResizeHandles(bounds){return bounds?[['nw',bounds.x1,bounds.y1],['ne',bounds.x2,bounds.y1],['sw',bounds.x1,bounds.y2],['se',bounds.x2,bounds.y2]]:[];}
+function noteResizeHandle(point){return noteResizeHandles(noteSelectionBounds()).find(([,x,y])=>Math.hypot(point.x-x,point.y-y)<=11/noteDrawZoom);}
+function paintNoteSelection(ctx){
+  const bounds=noteSelectionBounds();
+  if(bounds&&!noteAreaRect){ctx.save();ctx.strokeStyle='#2563eb';ctx.fillStyle='#fff';ctx.lineWidth=1.5/noteDrawZoom;ctx.setLineDash([6/noteDrawZoom,4/noteDrawZoom]);ctx.strokeRect(bounds.x1,bounds.y1,bounds.x2-bounds.x1,bounds.y2-bounds.y1);ctx.setLineDash([]);const r=5/noteDrawZoom;for(const [,x,y]of noteResizeHandles(bounds)){ctx.fillRect(x-r,y-r,r*2,r*2);ctx.strokeRect(x-r,y-r,r*2,r*2);}ctx.restore();}
+  if(noteLassoPoints.length){ctx.save();ctx.strokeStyle='#2563eb';ctx.lineWidth=1.5/noteDrawZoom;ctx.setLineDash([5/noteDrawZoom,4/noteDrawZoom]);ctx.beginPath();noteLassoPoints.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.stroke();ctx.restore();}
+}
+function noteResizeSelection(point){
+  const {handle,bounds,objects}=noteResizeDrag,next={...bounds},min=8/noteDrawZoom;
+  if(handle.includes('w'))next.x1=Math.min(point.x,bounds.x2-min);else next.x2=Math.max(point.x,bounds.x1+min);
+  if(handle.includes('n'))next.y1=Math.min(point.y,bounds.y2-min);else next.y2=Math.max(point.y,bounds.y1+min);
+  const transformed=resizeWhiteboardObjects(objects,bounds,next),map=new Map(transformed.map(o=>[o.id,o]));noteDrawObjects=noteDrawObjects.map(o=>map.get(o.id)||o);
+}
+function noteSelectedByLasso(points){return noteDrawObjects.filter(o=>{const b=noteObjectBounds(o),vertices=o.type==='stroke'?o.points:[{x:b.x1,y:b.y1},{x:b.x2,y:b.y1},{x:b.x2,y:b.y2},{x:b.x1,y:b.y2}];return vertices.length&&vertices.every(p=>pointInLasso(p,points));}).map(o=>o.id);}
+function setNoteBoardPreferences(value){noteBoardSettings=normalizeWhiteboardSettings(value);noteSaveBoardPreferences(noteBoardSettings);if(noteDrawTool==='pen')chooseNotePen(notePenId(),false);noteDrawingToolbar?.refresh();renderNoteDrawing();}
+function notePenId(){return noteInkType.value==='pencil'?'secondary':noteInkType.value==='highlighter'?'highlighter':'pen';}
+function captureNotePen(){const id=notePenId();noteBoardSettings.pens[id]={...noteBoardSettings.pens[id],color:noteDrawColor.value,width:Number(noteDrawSize.value),lineStyle:noteLineStyle};noteSaveBoardPreferences(noteBoardSettings);updateNoteDrawingCursor();}
+function chooseNotePen(id,remember=true){
+  if(remember)captureNotePen();const preset=noteBoardSettings.pens[id];
+  noteInkType.value=id==='secondary'?'pencil':id==='highlighter'?'highlighter':'pen';noteDrawColor.value=preset.color;
+  if(![...noteDrawSize.options].some(o=>o.value===String(preset.width)))noteDrawSize.add(new Option(preset.width+' px',String(preset.width)));
+  noteDrawSize.value=String(preset.width);noteLineStyle=preset.lineStyle;noteShapeTool.value='none';selectNoteDrawTool('pen');
+}
+function noteModifierHeld(event,binding){return binding==='Control'?(event.ctrlKey||event.metaKey):binding==='Shift'?event.shiftKey:binding==='Alt'?event.altKey:noteHeldKeys.has(binding);}
+function armNoteRecognition(){
+  clearTimeout(noteRecognitionTimer);if(!noteBoardSettings.recognize||noteInkType.value==='highlighter')return;
+  noteRecognitionTimer=setTimeout(()=>{if(!noteDrawing||noteDrawTool!=='pen'||noteDrawCurrent?.type!=='stroke')return;const recognized=recognizedInk(noteDrawCurrent,noteBoardSettings.recognizeTypes);if(recognized){noteDrawCurrent=recognized;noteRecognitionLocked=true;renderNoteDrawing();}},500);
+}
+function addNoteLaser(point){noteLaserPoints.push({...point,time:performance.now()});if(!noteLaserFrame)noteLaserFrame=requestAnimationFrame(animateNoteLaser);}
+function animateNoteLaser(){noteLaserFrame=null;noteLaserPoints=noteLaserPoints.filter(p=>performance.now()-p.time<1000);renderNoteDrawing();if(noteLaserPoints.length)noteLaserFrame=requestAnimationFrame(animateNoteLaser);}
+function paintNoteLaser(ctx){if(!noteLaserPoints.length)return;ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#ff334d';ctx.fillStyle='#ff334d';ctx.lineWidth=noteBoardSettings.laserWidth/noteDrawZoom;ctx.shadowColor='#ff334d';ctx.shadowBlur=10/noteDrawZoom;for(let i=1;i<noteLaserPoints.length;i++){ctx.globalAlpha=Math.max(0,1-(performance.now()-noteLaserPoints[i].time)/1000);ctx.beginPath();ctx.moveTo(noteLaserPoints[i-1].x,noteLaserPoints[i-1].y);ctx.lineTo(noteLaserPoints[i].x,noteLaserPoints[i].y);ctx.stroke();}const last=noteLaserPoints.at(-1);ctx.beginPath();ctx.arc(last.x,last.y,Math.max(2,noteBoardSettings.laserWidth/2)/noteDrawZoom,0,Math.PI*2);ctx.fill();ctx.restore();}
+function zoomNoteAt(value,event){const previous=noteDrawZoom,box=noteDrawViewport.getBoundingClientRect(),x=event?event.clientX-box.left:box.width/2,y=event?event.clientY-box.top:box.height/2;noteDrawZoom=Math.max(.25,Math.min(4,value));applyNoteDrawZoom();noteDrawViewport.scrollLeft=(noteDrawViewport.scrollLeft+x)*noteDrawZoom/previous-x;noteDrawViewport.scrollTop=(noteDrawViewport.scrollTop+y)*noteDrawZoom/previous-y;renderNoteDrawing();}
+function noteObjectVertices(o){const b=noteObjectBounds(o);return [{x:b.x1,y:b.y1},{x:b.x2,y:b.y2}];}
+function deleteNoteSelection(){
+  if(noteAreaRect){noteAreaTools.querySelector('[data-area-action="delete"]').click();return;}
+  const selection=noteSelection();if(!selection.length)return;pushNoteDrawingHistory();const ids=new Set(selection.map(o=>o.id));noteDrawObjects=noteDrawObjects.filter(o=>!ids.has(o.id));noteSelectedIds.clear();noteSelectedObjectId=null;saveNoteDrawing();
+}
+function addNoteBitmap(canvas){
+  const image=noteBitmapObject(canvas);if(image.source.length>2500000)throw new Error('A imagem ficou muito grande. Reduza a resolução antes de inserir.');
+  const scale=Math.min(1,(noteDrawCanvas.width*.8)/canvas.width,(noteDrawCanvas.height*.8)/canvas.height),w=canvas.width*scale,h=canvas.height*scale;
+  image.x1=(noteDrawCanvas.width-w)/2;image.y1=(noteDrawCanvas.height-h)/2;image.x2=image.x1+w;image.y2=image.y1+h;
+  pushNoteDrawingHistory();noteDrawObjects.push(image);selectNoteDrawTool('select');setNoteSelection([image.id]);saveNoteDrawing();
+}
+function noteExportCanvas(){if(!noteDrawingReady())throw new Error('Aguarde o desenho terminar de carregar.');const canvas=document.createElement('canvas');canvas.width=noteDrawCanvas.width;canvas.height=noteDrawCanvas.height;const ctx=canvas.getContext('2d');drawWhiteboardBackground(ctx,canvas.width,canvas.height,noteBoardSettings);if(noteLegacyImage)ctx.drawImage(noteLegacyImage,0,0,canvas.width,canvas.height);noteDrawObjects.forEach(o=>drawNoteObject(ctx,o));return canvas;}
+function noteMessage(message){const dialog=document.createElement('dialog');dialog.className='note-board-dialog';const text=document.createElement('p');text.textContent=message;const button=document.createElement('button');button.textContent='Entendi';button.onclick=()=>dialog.close();dialog.append(text,button);noteStudioModal.append(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();}
+async function chooseNotePDFPage(count){if(count===1)return 1;return new Promise(resolve=>{const dialog=document.createElement('dialog');dialog.className='note-board-dialog';const form=document.createElement('form');form.method='dialog';const title=document.createElement('h2');title.textContent='Adicionar página do PDF';const label=document.createElement('label');label.textContent='Página (1 a '+count+')';const input=document.createElement('input');input.type='number';input.min='1';input.max=String(count);input.value='1';input.required=true;label.append(input);const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancelar';cancel.onclick=()=>dialog.close();const apply=document.createElement('button');apply.type='submit';apply.textContent='Adicionar página';form.append(title,label,cancel,apply);dialog.append(form);let number=null;form.onsubmit=e=>{e.preventDefault();number=Number(input.value);if(Number.isInteger(number)&&number>=1&&number<=count)dialog.close();};dialog.addEventListener('close',()=>{dialog.remove();resolve(number);},{once:true});noteStudioModal.append(dialog);dialog.showModal();});}
+function editNoteText(object=null,point=null){
+  const tabId=getActiveTab()?.id,dialog=document.createElement('dialog');dialog.className='note-board-dialog';
+  const form=document.createElement('form');form.method='dialog';const title=document.createElement('h2');title.textContent=object?'Editar texto':'Texto no quadro';
+  const input=document.createElement('textarea');input.maxLength=4000;input.rows=5;input.required=true;input.setAttribute('aria-label','Texto da caixa');input.value=object?.text||'';
+  const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancelar';cancel.onclick=()=>dialog.close();const apply=document.createElement('button');apply.type='submit';apply.textContent='Salvar texto';form.append(title,input,cancel,apply);dialog.append(form);
+  form.onsubmit=event=>{event.preventDefault();if(getActiveTab()?.id!==tabId||!input.value.trim()){dialog.close();return;}pushNoteDrawingHistory();
+    const ctx=noteDrawCanvas.getContext('2d');ctx.font='24px Inter, sans-serif';const lines=input.value.split('\n'),w=Math.min(noteDrawCanvas.width,Math.max(80,...lines.map(line=>ctx.measureText(line).width+12))),h=Math.min(noteDrawCanvas.height,Math.max(36,lines.length*32));
+    const x=object?.x1??Math.max(0,Math.min((point?.x??noteDrawCanvas.width/2)-w/2,noteDrawCanvas.width-w)),y=object?.y1??Math.max(0,Math.min((point?.y??noteDrawCanvas.height/2)-h/2,noteDrawCanvas.height-h));
+    const item={id:object?.id||'draw-'+crypto.randomUUID(),type:'text',text:input.value.slice(0,4000),color:object?.color||noteDrawColor.value,x1:x,y1:y,x2:x+w,y2:y+h};
+    if(object)noteDrawObjects=noteDrawObjects.map(o=>o.id===object.id?item:o);else noteDrawObjects.push(item);
+    selectNoteDrawTool('select');setNoteSelection([item.id]);saveNoteDrawing();dialog.close();
+  };
+  dialog.addEventListener('close',()=>dialog.remove(),{once:true});noteStudioModal.append(dialog);dialog.showModal();input.focus();return dialog;
+}
+
+function noteBitmap(source){
+  if(typeof source!=='string'||!source.startsWith('data:image/png;base64,'))return null;
+  if(!noteBitmapCache.has(source)){
+    const image=new Image();noteBitmapCache.set(source,image);
+    image.onload=()=>{renderNoteDrawing();updateNoteAreaTools();};image.src=source;
+  }
+  return noteBitmapCache.get(source);
+}
+async function prepareNoteLogo(){
+  if(!noteLogoTemplate){
+    const image=new Image();image.src='assets/labiomec-logo-transparent.png';await image.decode();
+    const canvas=document.createElement('canvas');canvas.width=240;canvas.height=240;
+    canvas.getContext('2d').drawImage(image,0,0,240,240);noteLogoTemplate=noteBitmapObject(canvas);
+  }
+  return noteLogoTemplate;
+}
+function noteDrawingReady(){return (!noteLegacyImage||(noteLegacyImage.complete&&noteLegacyImage.naturalWidth>0))&&noteDrawObjects.every(o=>o.type!=='bitmap'||(noteBitmap(o.source) instanceof HTMLCanvasElement||(noteBitmap(o.source)?.complete&&noteBitmap(o.source)?.naturalWidth>0)));}
+function updateNoteAreaTools(){
+  noteDrawingToolbar?.refresh();
+  const id=getActiveTab()?.id;
+  noteDrawUndo.disabled=!(noteDrawHistory.get(id)?.length);
+  noteDrawRedo.disabled=!(noteDrawRedoHistory.get(id)?.length);
+  const valid=((noteAreaRect&&noteAreaRect.width>=2&&noteAreaRect.height>=2)||noteSelection().length>0)&&noteDrawingReady();
+  noteAreaTools.querySelector('[data-area-action="crop"]').disabled=!(noteAreaRect&&noteAreaRect.width>=2&&noteAreaRect.height>=2&&noteDrawingReady());
+  noteAreaTools.querySelector('[data-area-action="copy"]').disabled=!valid;
+  noteAreaTools.querySelector('[data-area-action="delete"]').disabled=!valid;
+  noteAreaTools.querySelector('[data-area-action="cancel"]').disabled=!noteAreaRect&&!noteSelection().length;
+  noteAreaTools.querySelector('[data-area-action="paste"]').disabled=(!noteAreaClipboard&&!noteSelectionClipboard)||!noteDrawingReady();
+  noteAreaTools.querySelectorAll('[data-area-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.areaTool===noteDrawTool)));
+}
+function noteDrawingSnapshot(){
+  if(!noteDrawingReady())return null;
+  const canvas=document.createElement('canvas');canvas.width=noteDrawCanvas.width;canvas.height=noteDrawCanvas.height;
+  const ctx=canvas.getContext('2d');
+  if(noteLegacyImage)ctx.drawImage(noteLegacyImage,0,0,canvas.width,canvas.height);
+  noteDrawObjects.forEach(o=>drawNoteObject(ctx,o));return canvas;
+}
+function noteBitmapObject(canvas,x=0,y=0){
+  const source=canvas.toDataURL('image/png');noteBitmapCache.set(source,canvas);
+  return {id:'draw-'+crypto.randomUUID(),type:'bitmap',source,x1:x,y1:y,x2:x+canvas.width,y2:y+canvas.height};
+}
+function noteAreaPixels(snapshot,rect){
+  const canvas=document.createElement('canvas');canvas.width=rect.width;canvas.height=rect.height;
+  canvas.getContext('2d').drawImage(snapshot,rect.x,rect.y,rect.width,rect.height,0,0,rect.width,rect.height);return canvas;
+}
+function detachNoteArea(){
+  const snapshot=noteDrawingSnapshot();if(!snapshot)return false;
+  const piece=noteBitmapObject(noteAreaPixels(snapshot,noteAreaRect),noteAreaRect.x,noteAreaRect.y);
+  snapshot.getContext('2d').clearRect(noteAreaRect.x,noteAreaRect.y,noteAreaRect.width,noteAreaRect.height);
+  noteDrawObjects=[noteBitmapObject(snapshot),piece];noteLegacyImage=null;
+  noteSelectedObjectId=piece.id;return true;
+}
+function clearNoteArea(){noteAreaRect=null;noteAreaStart=null;noteAreaMoving=false;noteAreaHint.textContent='';updateNoteAreaTools();}
+function noteDrawingState(){return {objects:cloneNoteObjects(noteDrawObjects),width:noteDrawCanvas.width,height:noteDrawCanvas.height,legacy:noteLegacyImage?.src||null};}
+function restoreNoteDrawing(snapshot){
+  noteDrawPendingHistory=null;
+  noteDrawObjects=cloneNoteObjects(snapshot.objects);noteDrawCanvas.width=snapshot.width;noteDrawCanvas.height=snapshot.height;
+  noteLegacyImage=null;if(snapshot.legacy){noteLegacyImage=new Image();noteLegacyImage.onload=()=>{applyNoteDrawZoom();renderNoteDrawing();updateNoteAreaTools();};noteLegacyImage.src=snapshot.legacy;}
+  noteSelectedIds.clear();noteSelectedObjectId=null;clearNoteArea();applyNoteDrawZoom();saveNoteDrawing();
+}
 function notePlainToHtml(text){ return escapeHtml(String(text||'')).replace(/\n/g,'<br>'); }
 function cloneNoteObjects(value){return JSON.parse(JSON.stringify(value||[]));}
 function notePoint(e){const r=noteDrawCanvas.getBoundingClientRect();return{x:(e.clientX-r.left)*noteDrawCanvas.width/r.width,y:(e.clientY-r.top)*noteDrawCanvas.height/r.height};}
 function drawNoteObject(ctx,o){
   ctx.save();ctx.strokeStyle=o.color||'#244b35';ctx.lineWidth=o.width||5;ctx.lineCap='round';ctx.lineJoin='round';
   if(o.ink==='pencil')ctx.globalAlpha=.68;
-  if(o.ink==='highlighter'){ctx.globalAlpha=.3;ctx.lineWidth=(o.width||5)*4;ctx.globalCompositeOperation='multiply';}
+  if(o.ink==='highlighter'){ctx.globalAlpha=Number.isFinite(o.opacity)?Math.max(.05,Math.min(1,o.opacity)):.3;ctx.lineWidth=(o.width||5)*(o.widthScale===1?1:4);ctx.globalCompositeOperation='multiply';}
+  if(o.type==='bitmap'){
+    const image=noteBitmap(o.source);
+    if(image&&(image instanceof HTMLCanvasElement||(image.complete&&image.naturalWidth>0)))ctx.drawImage(image,o.x1,o.y1,o.x2-o.x1,o.y2-o.y1);
+    ctx.restore();return;
+  }
+  if(o.type==='text'){
+    const lines=String(o.text||'').split('\n'),w=Math.abs(o.x2-o.x1),h=Math.abs(o.y2-o.y1),font=Math.max(1,h/(Math.max(1,lines.length)*1.35));
+    ctx.fillStyle=o.color||'#111827';ctx.font=font+'px Inter, sans-serif';ctx.textBaseline='top';lines.forEach((line,i)=>ctx.fillText(line,Math.min(o.x1,o.x2),Math.min(o.y1,o.y2)+i*font*1.35,w));ctx.restore();return;
+  }
+  if(o.lineStyle==='dashed')ctx.setLineDash([ctx.lineWidth*3,ctx.lineWidth*2]);
+  if(o.lineStyle==='dotted')ctx.setLineDash([0,Math.max(4,ctx.lineWidth*2.5)]);
   ctx.beginPath();
-  if(o.type==='stroke'&&o.points?.length){ctx.moveTo(o.points[0].x,o.points[0].y);o.points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));}
+  if(o.type==='stroke'&&o.points?.length){ctx.moveTo(o.points[0].x,o.points[0].y);o.points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));if(o.points.length===1)ctx.lineTo(o.points[0].x+.01,o.points[0].y);}
   if(o.type==='line'){ctx.moveTo(o.x1,o.y1);ctx.lineTo(o.x2,o.y2);}
   if(o.type==='rect')ctx.rect(Math.min(o.x1,o.x2),Math.min(o.y1,o.y2),Math.abs(o.x2-o.x1),Math.abs(o.y2-o.y1));
   if(o.type==='ellipse'){const x=(o.x1+o.x2)/2,y=(o.y1+o.y2)/2;ctx.ellipse(x,y,Math.abs(o.x2-o.x1)/2,Math.abs(o.y2-o.y1)/2,0,0,Math.PI*2);}
-  ctx.stroke();ctx.restore();
+  drawWhiteboardSolid(ctx,o);
+  ctx.stroke();
+  if(o.lineStyle==='arrow'&&(o.type==='line'||o.type==='stroke')){
+    const points=o.type==='stroke'?o.points:[{x:o.x1,y:o.y1},{x:o.x2,y:o.y2}];
+    if(points.length>1){const end=points.at(-1),start=[...points].reverse().find(p=>Math.hypot(end.x-p.x,end.y-p.y)>1);
+      if(start){const angle=Math.atan2(end.y-start.y,end.x-start.x),length=Math.max(12,ctx.lineWidth*4);ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(end.x-length*Math.cos(angle-Math.PI/6),end.y-length*Math.sin(angle-Math.PI/6));ctx.lineTo(end.x,end.y);ctx.lineTo(end.x-length*Math.cos(angle+Math.PI/6),end.y-length*Math.sin(angle+Math.PI/6));ctx.stroke();}
+    }
+  }
+  ctx.restore();
 }
 function noteObjectBounds(o){
-  if(o.type==='stroke'){const xs=o.points.map(p=>p.x),ys=o.points.map(p=>p.y);return{x1:Math.min(...xs),y1:Math.min(...ys),x2:Math.max(...xs),y2:Math.max(...ys)};}
+  if(o.type==='stroke')return boundsOfPoints(o.points);
   return{x1:Math.min(o.x1,o.x2),y1:Math.min(o.y1,o.y2),x2:Math.max(o.x1,o.x2),y2:Math.max(o.y1,o.y2)};
 }
 function renderNoteDrawing(){
   const ctx=noteDrawCanvas.getContext('2d');ctx.clearRect(0,0,noteDrawCanvas.width,noteDrawCanvas.height);
+  drawWhiteboardBackground(ctx,noteDrawCanvas.width,noteDrawCanvas.height,noteBoardSettings);
   if(noteLegacyImage?.complete)ctx.drawImage(noteLegacyImage,0,0,noteDrawCanvas.width,noteDrawCanvas.height);
   noteDrawObjects.forEach(o=>drawNoteObject(ctx,o));
   if(noteDrawCurrent)drawNoteObject(ctx,noteDrawCurrent);
-  const selected=noteDrawObjects.find(o=>o.id===noteSelectedObjectId);
-  if(selected){const b=noteObjectBounds(selected);ctx.save();ctx.strokeStyle='#2563eb';ctx.lineWidth=2;ctx.setLineDash([7,5]);ctx.strokeRect(b.x1-8,b.y1-8,b.x2-b.x1+16,b.y2-b.y1+16);ctx.restore();}
+  paintNoteSelection(ctx);paintNoteLaser(ctx);
+  if(noteAreaRect){const r=noteAreaRect;ctx.save();ctx.strokeStyle='#2563eb';ctx.lineWidth=2/noteDrawZoom;ctx.setLineDash([7/noteDrawZoom,5/noteDrawZoom]);ctx.strokeRect(r.x,r.y,r.width,r.height);ctx.restore();}
 }
 function pushNoteDrawingHistory(){
-  const id=getActiveTab()?.id;if(!id)return;
-  const history=noteDrawHistory.get(id)||[];history.push(cloneNoteObjects(noteDrawObjects));
-  if(history.length>20)history.shift();noteDrawHistory.set(id,history);
+  if(getActiveTab())noteDrawPendingHistory=noteDrawingState();
 }
-function saveNoteDrawing(){const tab=getActiveTab();if(tab){tab.drawingObjects=cloneNoteObjects(noteDrawObjects);saveNoteState();}renderNoteDrawing();}
+function saveNoteDrawing(){if(noteEraseCanvas){noteDrawObjects=[noteBitmapObject(noteEraseCanvas)];noteEraseCanvas=null;}const tab=getActiveTab();if(tab){
+  if(noteDrawPendingHistory&&JSON.stringify(noteDrawPendingHistory)!==JSON.stringify(noteDrawingState())){
+    const history=noteDrawHistory.get(tab.id)||[];history.push(noteDrawPendingHistory);
+    if(history.length>20)history.shift();noteDrawHistory.set(tab.id,history);noteDrawRedoHistory.set(tab.id,[]);
+  }
+  noteDrawPendingHistory=null;
+  tab.drawingObjects=cloneNoteObjects(noteDrawObjects);tab.drawingWidth=noteDrawCanvas.width;tab.drawingHeight=noteDrawCanvas.height;if(noteLegacyImage)tab.drawing=noteLegacyImage.src;else delete tab.drawing;saveNoteState();}renderNoteDrawing();updateNoteAreaTools();}
 function distanceToSegment(p,a,b){const l=(b.x-a.x)**2+(b.y-a.y)**2;if(!l)return Math.hypot(p.x-a.x,p.y-a.y);let t=((p.x-a.x)*(b.x-a.x)+(p.y-a.y)*(b.y-a.y))/l;t=Math.max(0,Math.min(1,t));return Math.hypot(p.x-(a.x+t*(b.x-a.x)),p.y-(a.y+t*(b.y-a.y)));}
 function hitNoteObject(o,p,r=12){
+  if(o.type==='stroke'&&o.points.length===1)return Math.hypot(p.x-o.points[0].x,p.y-o.points[0].y)<r+(o.width||5)/2;
   if(o.type==='stroke')return o.points.some((q,i)=>i&&distanceToSegment(p,o.points[i-1],q)<r+(o.width||5)/2);
   if(o.type==='line')return distanceToSegment(p,{x:o.x1,y:o.y1},{x:o.x2,y:o.y2})<r+(o.width||5)/2;
   const b=noteObjectBounds(o);return p.x>=b.x1-r&&p.x<=b.x2+r&&p.y>=b.y1-r&&p.y<=b.y2+r;
@@ -4334,25 +4610,56 @@ function findNoteObject(p){return [...noteDrawObjects].reverse().find(o=>hitNote
 function moveNoteObject(o,dx,dy){if(o.type==='stroke')o.points.forEach(p=>{p.x+=dx;p.y+=dy;});else{o.x1+=dx;o.x2+=dx;o.y1+=dy;o.y2+=dy;}}
 function eraseNotePartial(p){
   const radius=Math.max(12,Number(noteDrawSize.value)*3),next=[];
+  if(noteLegacyImage||noteDrawObjects.some(o=>o.type==='bitmap')){
+    if(!noteEraseCanvas){noteEraseCanvas=noteDrawingSnapshot();if(!noteEraseCanvas)return;noteDrawObjects=[noteBitmapObject(noteEraseCanvas)];noteLegacyImage=null;}
+    const ctx=noteEraseCanvas.getContext('2d');ctx.save();ctx.globalCompositeOperation='destination-out';ctx.beginPath();ctx.arc(p.x,p.y,radius,0,Math.PI*2);ctx.fill();ctx.restore();return;
+  }
   noteDrawObjects.forEach(o=>{
     if(o.type!=='stroke'){next.push(o);return;}
     let part=[];o.points.forEach(q=>{if(Math.hypot(q.x-p.x,q.y-p.y)>radius)part.push(q);else{if(part.length>1)next.push({...o,id:`draw-${Date.now()}-${Math.random()}`,points:part});part=[];}});if(part.length>1)next.push({...o,id:`draw-${Date.now()}-${Math.random()}`,points:part});
   });noteDrawObjects=next;
 }
+function updateNoteDrawingCursor(){
+  if(notePanHeld||noteDrawTool==='pan'){noteDrawCanvas.style.cursor='grab';return;}
+  if(noteDrawTool==='select'){noteDrawCanvas.style.cursor='default';return;}
+  const width=noteDrawTool==='laser'?noteBoardSettings.laserWidth/noteDrawZoom:Number(noteDrawSize.value)||5;
+  const radius=Math.max(3,Math.min(24,(noteDrawTool==='eraser'?Math.max(10,width*2):width/2)*noteDrawZoom));
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="${radius}" fill="none" stroke="white" stroke-width="3"/><circle cx="32" cy="32" r="${radius}" fill="none" stroke="black" stroke-width="1"/></svg>`;
+  noteDrawCanvas.style.cursor=`url("data:image/svg+xml,${encodeURIComponent(svg)}") 32 32, crosshair`;
+}
+function fitNoteDrawingSurface(){
+  if(noteDrawViewport.id!=='note-draw-viewport'||!noteDrawViewport.clientWidth||!noteDrawViewport.clientHeight)return;
+  noteDrawZoom=Math.max(noteDrawZoom,noteDrawViewport.clientWidth/4096,noteDrawViewport.clientHeight/4096);
+  const width=Math.min(4096,Math.max(noteDrawCanvas.width,Math.ceil(noteDrawViewport.clientWidth/noteDrawZoom)));
+  const height=Math.min(4096,Math.max(noteDrawCanvas.height,Math.ceil(noteDrawViewport.clientHeight/noteDrawZoom)));
+  if(width===noteDrawCanvas.width&&height===noteDrawCanvas.height)return;
+  if(noteLegacyImage){
+    if(!noteLegacyImage.complete||!noteLegacyImage.naturalWidth)return;
+    const legacy=document.createElement('canvas');legacy.width=noteDrawCanvas.width;legacy.height=noteDrawCanvas.height;
+    legacy.getContext('2d').drawImage(noteLegacyImage,0,0,legacy.width,legacy.height);
+    noteDrawObjects.unshift(noteBitmapObject(legacy));noteLegacyImage=null;
+  }
+  noteDrawCanvas.width=width;noteDrawCanvas.height=height;
+}
 function applyNoteDrawZoom(){
+  fitNoteDrawingSurface();
   noteDrawCanvas.style.width=(noteDrawCanvas.width*noteDrawZoom)+'px';noteDrawCanvas.style.height=(noteDrawCanvas.height*noteDrawZoom)+'px';
-  noteZoomLabel.textContent=Math.round(noteDrawZoom*100)+'%';
+  noteZoomLabel.textContent=Math.round(noteDrawZoom*100)+'%';updateNoteDrawingCursor();
 }
 function renderNoteStudio(){
   const tab = getActiveTab();
   if(!tab) return;
+  noteBoardSettings=normalizeWhiteboardSettings(noteState.whiteboardPreferences);noteSelectedIds.clear();noteSelectionClipboard=null;noteLassoPoints=[];noteLaserPoints=[];noteHeldKeys.clear();notePanHeld=false;
+  noteDrawCanvas.width=drawingSize(tab.drawingWidth)||1400;
+  noteDrawCanvas.height=drawingSize(tab.drawingHeight)||760;
+  noteDrawPendingHistory=null;clearNoteArea();noteAreaClipboard=null;noteBitmapCache.clear();updateNoteAreaTools();
   noteDrawObjects = cloneNoteObjects(tab.drawingObjects);
   noteSelectedObjectId = null;
-  noteLegacyImage=null;if(tab.drawing){noteLegacyImage=new Image();noteLegacyImage.onload=renderNoteDrawing;noteLegacyImage.src=tab.drawing;}
+  noteLegacyImage=null;if(tab.drawing){noteLegacyImage=new Image();noteLegacyImage.onload=()=>{applyNoteDrawZoom();renderNoteDrawing();updateNoteAreaTools();};noteLegacyImage.src=tab.drawing;}
   noteStudioTitle.textContent = tab.title || 'Nota atual';
   noteSavedRange=null;
   noteRichEditor.innerHTML = sanitizeNoteHtml(tab.richContent || notePlainToHtml(tab.content));
-  requestAnimationFrame(renderNoteDrawing);
+  chooseNotePen('pen',false);applyNoteDrawZoom();requestAnimationFrame(()=>{applyNoteDrawZoom();renderNoteDrawing();updateNoteAreaTools();});
 }
 function setNoteStudioMode(mode){
   const drawingMode = mode === 'draw';
@@ -4413,45 +4720,197 @@ noteTextColor.addEventListener('input',()=>runNoteCommand('foreColor',noteTextCo
 noteRichEditor.addEventListener('input',saveRichNote);
 const noteDocumentTools=initializeNoteDocumentTools({editor:noteRichEditor,toolbar:noteFormatBar,modal:noteStudioModal,getDocumentId:()=>currentUid+':'+getActiveTab()?.id,getTitle:()=>getActiveTab()?.title || 'Nota',save:saveRichNote,command:(name,value)=>{document.execCommand(name,false,value);saveRichNote();}});
 onAuthStateChanged(auth,()=>noteDocumentTools.closeDialog());
+noteDrawCanvas.addEventListener('pointerdown',event=>{
+  if(event.pointerType==='pen'){notePenPointer=event.pointerId;return;}
+  if(event.pointerType!=='touch')return;
+  if(notePenPointer!==null){event.preventDefault();event.stopImmediatePropagation();return;}
+  if(!noteTouchPointers.size)noteTouchCheckpoint={state:noteDrawingState(),legacy:noteLegacyImage};
+  noteTouchPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+  if(noteTouchPointers.size<2)return;
+  event.preventDefault();event.stopImmediatePropagation();noteDrawCanvas.setPointerCapture(event.pointerId);
+  if(!noteTouchGesture){cancelNoteTouchDrawing();const center=noteTouchGeometry(),bounds=noteDrawViewport.getBoundingClientRect();noteTouchGesture={distance:center.distance,zoom:noteDrawZoom,worldX:(noteDrawViewport.scrollLeft+center.x-bounds.left)/noteDrawZoom,worldY:(noteDrawViewport.scrollTop+center.y-bounds.top)/noteDrawZoom};}
+},{capture:true});
+noteDrawCanvas.addEventListener('pointermove',event=>{
+  if(event.pointerType!=='touch')return;
+  if(notePenPointer!==null){event.preventDefault();event.stopImmediatePropagation();return;}
+  if(noteTouchPointers.has(event.pointerId))noteTouchPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+  if(!noteTouchGesture)return;event.preventDefault();event.stopImmediatePropagation();
+  if(!noteGestureFrame)noteGestureFrame=requestAnimationFrame(updateNoteTouchGesture);
+},{capture:true});
+for(const type of ['pointerup','pointercancel'])noteDrawCanvas.addEventListener(type,event=>{
+  if(event.pointerType==='pen'){notePenPointer=null;return;}
+  if(event.pointerType!=='touch')return;
+  if(!noteTouchPointers.has(event.pointerId)){event.preventDefault();event.stopImmediatePropagation();return;}
+  const gesturing=!!noteTouchGesture;
+  if(gesturing){if(noteGestureFrame)cancelAnimationFrame(noteGestureFrame);updateNoteTouchGesture();event.preventDefault();event.stopImmediatePropagation();}
+  else if(type==='pointercancel'&&noteTouchPointers.has(event.pointerId)){cancelNoteTouchDrawing();}
+  noteTouchPointers.delete(event.pointerId);
+  if(!noteTouchPointers.size){noteTouchGesture=null;noteTouchCheckpoint=null;}
+},{capture:true});
 noteDrawCanvas.addEventListener('pointerdown',e=>{
+  if(e.button!==0||e.isPrimary===false)return;
+  noteDrawCanvas.focus({preventScroll:true});
   const p=notePoint(e);noteDrawing=true;noteDrawCanvas.setPointerCapture(e.pointerId);notePointerStart=p;
-  if(noteDrawTool==='pan'){notePanStart={x:e.clientX,y:e.clientY,left:noteDrawViewport.scrollLeft,top:noteDrawViewport.scrollTop};return;}
-  pushNoteDrawingHistory();
-  if(noteDrawTool==='select'){noteSelectedObjectId=findNoteObject(p)?.id||null;renderNoteDrawing();return;}
-  if(noteDrawTool==='eraser'){
-    if(noteEraserMode.value==='stroke'){const found=findNoteObject(p);if(found)noteDrawObjects=noteDrawObjects.filter(o=>o.id!==found.id);}else eraseNotePartial(p);
-    renderNoteDrawing();return;
+  if(noteDrawTool==='pan'||notePanHeld){notePanStart={x:e.clientX,y:e.clientY,left:noteDrawViewport.scrollLeft,top:noteDrawViewport.scrollTop};return;}
+  if(noteDrawTool==='laser'){addNoteLaser(p);return;}
+  if(noteDrawTool==='lasso'){noteLassoPoints=[p];return;}
+  if(noteDrawTool==='area'||noteDrawTool==='crop'){
+    noteSelectedObjectId=null;noteSelectedIds.clear();
+    if(noteDrawTool==='area'&&containsDrawingPoint(noteAreaRect,p)&&noteDrawingReady()){
+      pushNoteDrawingHistory();noteAreaMoving=detachNoteArea();
+    }else{noteAreaStart=p;noteAreaRect=drawingRect(p,p,noteDrawCanvas.width,noteDrawCanvas.height);noteAreaMoving=false;}
+    renderNoteDrawing();updateNoteAreaTools();return;
   }
-  const shape=noteShapeTool.value;
-  noteDrawCurrent=shape!=='none'?{id:`draw-${Date.now()}`,type:shape,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:noteDrawColor.value,width:Number(noteDrawSize.value)}:{id:`draw-${Date.now()}`,type:'stroke',points:[p],color:noteDrawColor.value,width:Number(noteDrawSize.value),ink:noteInkType.value};
+  clearNoteArea();
+  if(noteDrawTool==='select'){
+    const handle=noteResizeHandle(p);
+    if(handle){pushNoteDrawingHistory();noteResizeDrag={handle:handle[0],bounds:noteSelectionBounds(),objects:cloneNoteObjects(noteSelection())};return;}
+    const found=findNoteObject(p);
+    if(!found){setNoteSelection([]);return;}
+    if(e.shiftKey){const ids=new Set(noteSelection().map(o=>o.id));ids.has(found.id)?ids.delete(found.id):ids.add(found.id);setNoteSelection([...ids]);}
+    else if(!noteSelection().some(o=>o.id===found.id))setNoteSelection([found.id]);
+    pushNoteDrawingHistory();return;
+  }
+  setNoteSelection([]);pushNoteDrawingHistory();
+  if(noteDrawTool==='stamp'){
+    if(noteLogoTemplate){const size=Math.min(160,noteDrawCanvas.width,noteDrawCanvas.height),x=Math.max(0,Math.min(p.x-size/2,noteDrawCanvas.width-size)),y=Math.max(0,Math.min(p.y-size/2,noteDrawCanvas.height-size));noteDrawObjects.push({...noteLogoTemplate,id:'draw-'+crypto.randomUUID(),x1:x,y1:y,x2:x+size,y2:y+size});renderNoteDrawing();}return;
+  }
+  if(noteDrawTool==='eraser'){
+    if(noteEraserMode.value==='stroke'){const found=findNoteObject(p);if(found)noteDrawObjects=noteDrawObjects.filter(o=>o.id!==found.id);}else eraseNotePartial(p);renderNoteDrawing();return;
+  }
+  const shape=noteShapeTool.value;noteRecognitionLocked=false;noteForceLine=noteModifierHeld(e,noteBoardSettings.shortcuts.straight);
+  noteDrawCurrent=shape!=='none'?{id:'draw-'+crypto.randomUUID(),type:shape,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:noteDrawColor.value,width:Number(noteDrawSize.value),lineStyle:noteLineStyle}:{id:'draw-'+crypto.randomUUID(),type:'stroke',points:[p],color:noteDrawColor.value,width:Number(noteDrawSize.value),ink:noteInkType.value==='pencil'?'secondary':noteInkType.value,lineStyle:noteLineStyle};
+  if(noteDrawCurrent.ink==='highlighter'){noteDrawCurrent.opacity=noteBoardSettings.pens.highlighter.opacity;noteDrawCurrent.widthScale=1;}
+  armNoteRecognition();
 });
 noteDrawCanvas.addEventListener('pointermove',e=>{
-  if(!noteDrawing)return;
-  const p=notePoint(e);
-  if(noteDrawTool==='pan'&&notePanStart){noteDrawViewport.scrollLeft=notePanStart.left-(e.clientX-notePanStart.x);noteDrawViewport.scrollTop=notePanStart.top-(e.clientY-notePanStart.y);return;}
-  if(noteDrawTool==='select'&&noteSelectedObjectId){const o=noteDrawObjects.find(x=>x.id===noteSelectedObjectId);if(o){moveNoteObject(o,p.x-notePointerStart.x,p.y-notePointerStart.y);notePointerStart=p;renderNoteDrawing();}return;}
+  if(!noteDrawing)return;const p=notePoint(e);
+  if(notePanStart){noteDrawViewport.scrollLeft=notePanStart.left-(e.clientX-notePanStart.x);noteDrawViewport.scrollTop=notePanStart.top-(e.clientY-notePanStart.y);return;}
+  if(noteDrawTool==='laser'){addNoteLaser(p);return;}
+  if(noteDrawTool==='lasso'){noteLassoPoints.push(p);renderNoteDrawing();return;}
+  if(noteDrawTool==='area'||noteDrawTool==='crop'){
+    if(noteAreaMoving){
+      const dx=Math.max(-noteAreaRect.x,Math.min(p.x-notePointerStart.x,noteDrawCanvas.width-noteAreaRect.x-noteAreaRect.width)),dy=Math.max(-noteAreaRect.y,Math.min(p.y-notePointerStart.y,noteDrawCanvas.height-noteAreaRect.y-noteAreaRect.height));
+      const object=noteDrawObjects.find(o=>o.id===noteSelectedObjectId);if(object)moveNoteObject(object,dx,dy);noteAreaRect.x+=dx;noteAreaRect.y+=dy;notePointerStart=p;
+    }else if(noteAreaStart)noteAreaRect=drawingRect(noteAreaStart,p,noteDrawCanvas.width,noteDrawCanvas.height);
+    renderNoteDrawing();updateNoteAreaTools();return;
+  }
+  if(noteDrawTool==='select'){
+    if(noteResizeDrag)noteResizeSelection(p);else {for(const o of noteSelection())moveNoteObject(o,p.x-notePointerStart.x,p.y-notePointerStart.y);notePointerStart=p;}renderNoteDrawing();return;
+  }
   if(noteDrawTool==='eraser'){if(noteEraserMode.value==='stroke'){const found=findNoteObject(p);if(found)noteDrawObjects=noteDrawObjects.filter(o=>o.id!==found.id);}else eraseNotePartial(p);renderNoteDrawing();return;}
-  if(!noteDrawCurrent)return;if(noteDrawCurrent.type==='stroke')noteDrawCurrent.points.push(p);else{noteDrawCurrent.x2=p.x;noteDrawCurrent.y2=p.y;}renderNoteDrawing();
+  if(noteDrawTool==='stamp'||!noteDrawCurrent)return;
+  if(noteRecognitionLocked)return;
+  if(noteDrawCurrent.type==='stroke'){
+    noteForceLine=noteForceLine||noteModifierHeld(e,noteBoardSettings.shortcuts.straight);
+    if(noteForceLine)noteDrawCurrent.points=[noteDrawCurrent.points[0],p];else noteDrawCurrent.points.push(p);
+  }else {noteDrawCurrent.x2=p.x;noteDrawCurrent.y2=p.y;}
+  armNoteRecognition();renderNoteDrawing();
 });
 function finishNoteDrawing(){
-  if(!noteDrawing)return;noteDrawing=false;notePanStart=null;
-  if(noteDrawCurrent){noteDrawObjects.push(noteDrawCurrent);noteDrawCurrent=null;}
+  clearTimeout(noteRecognitionTimer);if(!noteDrawing)return;noteDrawing=false;const wasPan=!!notePanStart;notePanStart=null;noteResizeDrag=null;
+  if(wasPan||noteDrawTool==='laser')return;
+  if(noteDrawTool==='lasso'){const ids=noteSelectedByLasso(noteLassoPoints);noteLassoPoints=[];noteDrawTool='select';setNoteSelection(ids);return;}
+  if(noteDrawCurrent){
+    if(noteDrawCurrent.type==='stroke'&&(noteForceLine||noteBoardSettings.recognize&&noteBoardSettings.recognizeTypes.includes('line'))){
+      const points=noteDrawCurrent.points;
+      if(noteForceLine&&points.length>1){const a=points[0],b=points.at(-1);noteDrawCurrent={...noteDrawCurrent,type:'line',points:undefined,x1:a.x,y1:a.y,x2:b.x,y2:b.y};}
+      else noteDrawCurrent=recognizedInk(noteDrawCurrent,['line'])||noteDrawCurrent;
+    }
+    noteDrawObjects.push(noteDrawCurrent);noteDrawCurrent=null;
+  }
+  if(noteDrawTool==='area'||noteDrawTool==='crop'){
+    if(noteAreaMoving)saveNoteDrawing();noteAreaMoving=false;noteAreaStart=null;
+    noteAreaHint.textContent=noteAreaRect?.width>=2?(noteDrawTool==='crop'?'Confira a área e clique em Aplicar recorte.':'Arraste dentro da seleção para mover, ou use Copiar e Apagar área.'):'Arraste no quadro para selecionar uma área.';updateNoteAreaTools();return;
+  }
   if(noteDrawTool!=='pan')saveNoteDrawing();
 }
 noteDrawCanvas.addEventListener('pointerup',finishNoteDrawing);
-noteDrawCanvas.addEventListener('pointercancel',finishNoteDrawing);
-function selectNoteDrawTool(tool){noteDrawTool=tool;noteDrawPen.classList.toggle('active',tool==='pen');noteDrawEraser.classList.toggle('active',tool==='eraser');noteDrawPan.classList.toggle('active',tool==='pan');noteDrawSelect.classList.toggle('active',tool==='select');noteDrawCanvas.style.cursor=tool==='pan'?'grab':tool==='select'?'default':tool==='eraser'?'cell':'crosshair';}
+noteDrawCanvas.addEventListener('pointercancel',()=>{clearTimeout(noteRecognitionTimer);finishNoteDrawing();});
+noteDrawCanvas.addEventListener('dblclick',event=>{if(noteDrawTool==='select'){const object=findNoteObject(notePoint(event));if(object?.type==='text')editNoteText(object);}});
+noteDrawViewport.addEventListener('wheel',event=>{
+  if(noteStudioBody.dataset.mode!=='draw')return;event.preventDefault();
+  if(noteBoardSettings.wheel==='none')return;
+  if(event.shiftKey){const unit=event.deltaMode===1?16:event.deltaMode===2?noteDrawViewport.clientWidth:1;noteDrawViewport.scrollLeft+=(event.deltaX||event.deltaY)*unit;return;}
+  if((noteBoardSettings.wheel==='zoom'||noteDrawTool==='pan')||noteModifierHeld(event,noteBoardSettings.shortcuts.zoomModifier))zoomNoteAt(noteDrawZoom*Math.exp(-Math.max(-200,Math.min(200,event.deltaY))*.002),event);
+  else {noteDrawViewport.scrollTop+=event.deltaY;noteDrawViewport.scrollLeft+=event.deltaX;}
+},{passive:false});
+
+function selectNoteDrawTool(tool){clearTimeout(noteRecognitionTimer);noteLassoPoints=[];noteSelectedIds.clear();clearNoteArea();noteSelectedObjectId=null;noteDrawTool=tool;updateNoteAreaTools();renderNoteDrawing();noteDrawPen.classList.toggle('active',tool==='pen');noteDrawEraser.classList.toggle('active',tool==='eraser');noteDrawPan.classList.toggle('active',tool==='pan');noteDrawSelect.classList.toggle('active',tool==='select');updateNoteDrawingCursor();noteDrawingToolbar?.refresh();}
 noteDrawPen.addEventListener('click',()=>{noteShapeTool.value='none';selectNoteDrawTool('pen');});
 noteDrawEraser.addEventListener('click',()=>selectNoteDrawTool('eraser'));
 noteDrawPan.addEventListener('click',()=>selectNoteDrawTool('pan'));
 noteDrawSelect.addEventListener('click',()=>selectNoteDrawTool('select'));
+noteAreaTools.addEventListener('click',event=>{
+  const button=event.target.closest('button');if(!button||button.disabled)return;
+  if(button.dataset.areaTool){selectNoteDrawTool(button.dataset.areaTool);noteAreaHint.textContent='Arraste no quadro para marcar uma área.';return;}
+  const action=button.dataset.areaAction;
+  if(action==='cancel'){clearNoteArea();setNoteSelection([]);return;}
+  if(action==='copy'&&!noteAreaRect){const selected=noteSelection();if(selected.length){noteSelectionClipboard=cloneNoteObjects(selected);noteAreaClipboard=null;noteAreaHint.textContent='Seleção copiada. Use Ctrl+V para colar.';updateNoteAreaTools();}return;}
+  if(action==='delete'&&!noteAreaRect){deleteNoteSelection();return;}
+  if(action==='paste'&&(noteAreaClipboard||noteSelectionClipboard)){
+    const objects=cloneNoteObjects(noteSelectionClipboard||[noteAreaClipboard]);
+    const bounds=noteSelectionBounds(objects),w=bounds.x2-bounds.x1,h=bounds.y2-bounds.y1;
+    if(w>noteDrawCanvas.width||h>noteDrawCanvas.height){noteAreaHint.textContent='A seleção é maior que este quadro.';return;}
+    pushNoteDrawingHistory();const dx=Math.min(20,noteDrawCanvas.width-bounds.x2),dy=Math.min(20,noteDrawCanvas.height-bounds.y2);
+    for(const object of objects){object.id='draw-'+crypto.randomUUID();moveNoteObject(object,dx,dy);noteDrawObjects.push(object);}
+    if(noteSelectionClipboard){selectNoteDrawTool('select');setNoteSelection(objects.map(o=>o.id));}
+    else {const object=objects[0];noteSelectedObjectId=object.id;noteDrawTool='area';noteAreaRect={x:object.x1,y:object.y1,width:w,height:h};}
+    saveNoteDrawing();return;
+  }
+  if(!noteAreaRect||noteAreaRect.width<2||noteAreaRect.height<2)return;
+  const snapshot=noteDrawingSnapshot();if(!snapshot)return;
+  const piece=noteAreaPixels(snapshot,noteAreaRect);
+  if(action==='copy'){noteSelectionClipboard=null;noteAreaClipboard=noteBitmapObject(piece,noteAreaRect.x,noteAreaRect.y);noteAreaHint.textContent='Área copiada. Use Colar para criar uma cópia neste desenho.';updateNoteAreaTools();return;}
+  pushNoteDrawingHistory();
+  if(action==='crop'){
+    noteDrawCanvas.width=piece.width;noteDrawCanvas.height=piece.height;noteDrawObjects=[noteBitmapObject(piece)];applyNoteDrawZoom();
+  }else if(action==='delete'){
+    snapshot.getContext('2d').clearRect(noteAreaRect.x,noteAreaRect.y,noteAreaRect.width,noteAreaRect.height);noteDrawObjects=[noteBitmapObject(snapshot)];
+  }else{noteDrawPendingHistory=null;return;}
+  noteLegacyImage=null;noteSelectedObjectId=null;clearNoteArea();saveNoteDrawing();
+});
 noteInkType.addEventListener('change',()=>{noteShapeTool.value='none';selectNoteDrawTool('pen');});
 noteShapeTool.addEventListener('change',()=>{if(noteShapeTool.value!=='none')selectNoteDrawTool('pen');});
-noteDrawUndo.addEventListener('click',()=>{const id=getActiveTab()?.id,history=id?(noteDrawHistory.get(id)||[]):[];if(history.length){noteDrawObjects=cloneNoteObjects(history.pop());noteSelectedObjectId=null;saveNoteDrawing();}});
-noteDrawClear.addEventListener('click',()=>{pushNoteDrawingHistory();noteDrawObjects=[];noteSelectedObjectId=null;noteLegacyImage=null;const tab=getActiveTab();if(tab)delete tab.drawing;saveNoteDrawing();});
-noteZoomOut.addEventListener('click',()=>{noteDrawZoom=Math.max(.5,noteDrawZoom-.25);applyNoteDrawZoom();});
-noteZoomIn.addEventListener('click',()=>{noteDrawZoom=Math.min(2,noteDrawZoom+.25);applyNoteDrawZoom();});
+function undoNoteDrawing(){
+  if(noteDrawing||!noteDrawingReady())return;
+  const id=getActiveTab()?.id,history=noteDrawHistory.get(id)||[];if(!history.length)return;
+  const redo=noteDrawRedoHistory.get(id)||[];redo.push(noteDrawingState());noteDrawRedoHistory.set(id,redo);
+  restoreNoteDrawing(history.pop());
+}
+function redoNoteDrawing(){
+  if(noteDrawing||!noteDrawingReady())return;
+  const id=getActiveTab()?.id,redo=noteDrawRedoHistory.get(id)||[];if(!redo.length)return;
+  const history=noteDrawHistory.get(id)||[];history.push(noteDrawingState());noteDrawHistory.set(id,history);
+  restoreNoteDrawing(redo.pop());
+}
+noteDrawUndo.addEventListener('click',undoNoteDrawing);
+noteDrawRedo.addEventListener('click',redoNoteDrawing);
+noteStudioModal.addEventListener('keydown',event=>{
+  if(event.defaultPrevented||event.isComposing||noteStudioModal.classList.contains('hidden')||noteStudioBody.dataset.mode!=='draw')return;
+  if(event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),dialog'))return;
+  const binding=whiteboardKey(event);noteHeldKeys.add(binding);
+  if(binding===noteBoardSettings.shortcuts.pan){event.preventDefault();notePanHeld=true;noteDrawCanvas.style.cursor='grab';return;}
+  if(binding===noteBoardSettings.shortcuts.straight||binding===noteBoardSettings.shortcuts.zoomModifier)return;
+  if(noteDrawing)return;
+  if(event.key==='Escape'){event.preventDefault();clearNoteArea();setNoteSelection([]);return;}
+  let action=binding==='Ctrl+c'?'copy':binding==='Ctrl+v'?'paste':null;
+  if(!action)action=Object.keys(noteBoardSettings.shortcuts).find(key=>!['pan','straight','zoomModifier'].includes(key)&&noteBoardSettings.shortcuts[key]===binding);
+  if(binding==='Ctrl+Shift+z'&&noteBoardSettings.shortcuts.redo==='Ctrl+y')action='redo';
+  if(!action)return;event.preventDefault();event.stopPropagation();
+  if(action==='undo')undoNoteDrawing();else if(action==='redo')redoNoteDrawing();
+  else if(action==='delete')deleteNoteSelection();else if(action==='pen'||action==='secondary')chooseNotePen(action);
+  else if(action==='eraser')selectNoteDrawTool('eraser');else if(action==='text')editNoteText();
+  else noteAreaTools.querySelector('[data-area-action="'+action+'"]').click();
+});
+noteStudioModal.addEventListener('keyup',event=>{noteHeldKeys.delete(whiteboardKey(event));if(whiteboardKey(event)===noteBoardSettings.shortcuts.pan){notePanHeld=false;updateNoteDrawingCursor();}});
+window.addEventListener('blur',()=>{noteHeldKeys.clear();notePanHeld=false;});
+noteDrawColor.addEventListener('input',captureNotePen);noteDrawSize.addEventListener('change',captureNotePen);
+noteDrawClear.addEventListener('click',()=>{pushNoteDrawingHistory();noteDrawObjects=[];noteSelectedIds.clear();noteSelectedObjectId=null;noteLegacyImage=null;clearNoteArea();const tab=getActiveTab();if(tab)delete tab.drawing;saveNoteDrawing();});
+noteZoomOut.addEventListener('click',()=>zoomNoteAt(noteDrawZoom-.25));
+noteZoomIn.addEventListener('click',()=>zoomNoteAt(noteDrawZoom+.25));
 applyNoteDrawZoom();
+if(window.ResizeObserver)new ResizeObserver(()=>{applyNoteDrawZoom();renderNoteDrawing();}).observe(noteDrawViewport);
 function updateActiveTabTitle(){
   const activeTab = getActiveTab();
   if(!activeTab || !noteTabTitleInput) return;
@@ -5465,22 +5924,24 @@ function renderSectorPicker(){
   profileSectorCustomInput.disabled = !isAdmin();
   profileSectorCustomAdd.disabled = !isAdmin();
   profileSectorCustomInput.placeholder = isAdmin() ? 'Adicionar unidade...' : 'Unidades definidas pela administra\u00e7\u00e3o';
-  const known = laboratoryUnits(allKnownSectors());
+  profileSectorCustomInput.closest('.sector-picker-add').hidden = !isAdmin();
+  const known = isAdmin() ? laboratoryUnits(allKnownSectors()) : profilePendingSectors;
   const all = [...new Set([...known, ...profilePendingSectors])].sort((a,b)=>a.localeCompare(b));
   profileSectorPicker.innerHTML = all.map(s=>{
     const selected = profilePendingSectors.includes(s);
-    return `<button type="button" aria-pressed="${selected}" class="sector-chip${selected?' is-selected':''}" data-sector="${escapeHtml(s)}">${escapeHtml(s)}</button>`;
+    return `<button type="button" ${isAdmin()?'':'disabled'} aria-pressed="${selected}" class="sector-chip${selected?' is-selected':''}" data-sector="${escapeHtml(s)}">${escapeHtml(s)}</button>`;
   }).join('');
 }
 profileSectorPicker.addEventListener('click', (e)=>{
   const chip = e.target.closest('.sector-chip');
-  if(!chip) return;
+  if(!chip || !isAdmin()) return;
   const s = chip.dataset.sector;
   const idx = profilePendingSectors.indexOf(s);
   if(idx === -1) profilePendingSectors.push(s); else profilePendingSectors.splice(idx, 1);
   renderSectorPicker();
 });
 function addCustomSector(){
+  if(!isAdmin()) return;
   const val = profileSectorCustomInput.value.trim();
   if(!val) return;
   if(!isLaboratoryUnit(val)){profileError.textContent='Escolha essa informa\u00e7\u00e3o no campo de v\u00ednculo; aqui, adicione um laborat\u00f3rio ou equipe.';return;}
@@ -5532,7 +5993,7 @@ function closeProfileModal(){
 function maybeOpenProfileOnboarding(){
   if(profileOnboardingShown || !currentUid) return;
   const mine = state.users[currentUid];
-  if(!mine || !mine.affiliation || !userSectors(mine).length){
+  if(!mine || !mine.affiliation){
     profileOnboardingShown = true;
     openProfileModal(true);
   }
@@ -5628,14 +6089,14 @@ profileSaveBtn.addEventListener('click', ()=>{
   const bio = profileBioInput.value.trim();
   if(!name){ profileError.textContent = 'Digite seu nome pra continuar.'; return; }
   if(!profileAffiliationInput.value){ profileError.textContent = 'Escolha seu vínculo acadêmico ou profissional para continuar.'; profileAffiliationInput.focus(); return; }
-  if(!profilePendingSectors.length){ profileError.textContent = 'Selecione pelo menos uma unidade ou equipe do laboratório para continuar.'; profileSectorPicker.querySelector('button')?.focus(); return; }
+  if(isAdmin() && !profilePendingSectors.length){ profileError.textContent = 'Selecione pelo menos uma unidade ou equipe do laboratório para continuar.'; profileSectorPicker.querySelector('button')?.focus(); return; }
   const mine = (currentUid && state.users[currentUid]) || {};
   const photo = pendingPhoto === undefined ? (mine.photo || null) : pendingPhoto;
   const sectors = {};
   savedProfileUnits(profilePendingSectors,userSectors(mine)).forEach(s=>{ sectors[s] = true; });
   const editingUid=currentUid;
   profileSaveBtn.disabled=true;
-  update(ref(db, 'users/'+editingUid), { name, affiliation: profileAffiliationInput.value || null, sectors: Object.keys(sectors).length ? sectors : null, sector: null, bio: bio || null, photo, ...achievementVisibilityEditor.changes() }).then(()=>{
+  update(ref(db, 'users/'+editingUid), { name, affiliation: profileAffiliationInput.value || null, ...(isAdmin() ? {sectors: Object.keys(sectors).length ? sectors : null, sector: null} : {}), bio: bio || null, photo, ...achievementVisibilityEditor.changes() }).then(()=>{
     if(currentUid!==editingUid)return;
     document.dispatchEvent(new CustomEvent('hub:achievements-updated',{detail:{uid:editingUid,achievements:[]}}));
     profileOnboarding = false;
@@ -5698,7 +6159,6 @@ const viewProfileSector = document.getElementById('view-profile-sector');
 const viewProfileBio = document.getElementById('view-profile-bio');
 const viewProfileMessageBtn = document.getElementById('view-profile-message-btn');
 const viewProfileBanBtn = document.getElementById('view-profile-ban-btn');
-const viewProfileSupportBtn = document.getElementById('view-profile-support-btn');
 const viewProfileEditBtn = document.getElementById('view-profile-edit-btn');
 viewProfileEditBtn.onclick = () => { closeViewProfile(); openProfileModal(false); };
 
@@ -5886,15 +6346,6 @@ function openViewProfile(uid, fallbackName, showBack, returnConversation=null){
     viewProfileBanBtn.className = 'btn btn-danger';
   } else {
     viewProfileBanBtn.style.display = 'none';
-  }
-
-  const canManageSupport = isAdmin() && uid && uid !== currentUid;
-  if(canManageSupport){
-    viewProfileSupportBtn.style.display = '';
-    viewProfileSupportBtn.textContent = support ? 'Remover marca de suporte' : 'Marcar como suporte';
-    viewProfileSupportBtn.className = 'btn';
-  } else {
-    viewProfileSupportBtn.style.display = 'none';
   }
 
   if(viewProfileModal.classList.contains('hidden')){
@@ -6285,21 +6736,6 @@ function confirmRemoveMember(name){
     document.body.append(dialog);dialog.showModal();
   });
 }
-viewProfileSupportBtn.addEventListener('click', ()=>{
-  if(!viewingProfileUid || !isAdmin()) return;
-  const profile = state.users[viewingProfileUid] || {};
-  const support = !!profile.isSupport;
-  const name = viewProfileName.textContent || 'essa pessoa';
-  const ok = confirm(
-    support
-      ? `Remover a marca de suporte de ${name}?`
-      : `Marcar ${name} como suporte? A etiqueta amarela "suporte" vai aparecer no nome dela em todo o site, e ela passa a aparecer como opção de contato no botão de Suporte.`
-  );
-  if(!ok) return;
-  update(ref(db, 'users/'+viewingProfileUid), { isSupport: !support }).then(()=>{
-    closeViewProfile();
-  }).catch(handleDbError);
-});
 /* ===== mensagens diretas (DM) =====
    Cada conversa fica em dms/{chatId}/messages, onde chatId é os dois
    uids ordenados e unidos por '__'. Também mantemos um índice
@@ -6607,21 +7043,19 @@ dmNicknameBtn.addEventListener('click', ()=>{
 });
 
 function deleteConversation(otherUid, name){
-  if(!otherUid || !currentUid) return Promise.resolve();
-  const ok = confirm(`Apagar a conversa com ${name || 'essa pessoa'}? As mensagens somem pra você e pra essa pessoa, e não dá pra desfazer.`);
-  if(!ok) return Promise.resolve();
+  if(!otherUid || !currentUid) return Promise.resolve(false);
+  const ok = confirm(`Ocultar a conversa com ${name || 'essa pessoa'} para você? As mensagens continuarão visíveis para a outra pessoa.`);
+  if(!ok) return Promise.resolve(false);
   const cid = chatId(currentUid, otherUid);
-  return Promise.allSettled([
-    remove(ref(db, 'dms/'+cid)),
-    remove(ref(db, 'conversations/'+currentUid+'/'+otherUid))
-  ]);
+  return hubRequest('/conversations/delete',{method:'POST',body:JSON.stringify({conversation:cid})}).then(()=>true);
 }
 
 dmDeleteBtn.addEventListener('click', ()=>{
   if(!dmThreadUid) return;
   const known = dmConversations[dmThreadUid];
   const name = nicknameFor(dmThreadUid, known && known.name);
-  deleteConversation(dmThreadUid, name).then(()=>{
+  deleteConversation(dmThreadUid, name).then(deleted=>{
+    if(!deleted)return;
     closeDmThread();
     openDmList();
   }).catch(handleDbError);
@@ -8802,6 +9236,24 @@ initializePostMediaViewer({
   currentProfile:()=>currentUid&&state.users[currentUid]?{...state.users[currentUid],uid:currentUid}:null,
   person:(uid,name)=>({name:state.users[uid]?.name||name||'Integrante',photo:state.users[uid]?.photo||null}),
   openProfile:openViewProfile
+});
+
+noteSaveBoardPreferences=preferences=>{if(noteState&&currentUid){noteState.whiteboardPreferences=structuredClone(preferences);saveNoteState();}};
+noteDrawingToolbar=initializeDrawingToolbar({
+  toolbar:noteToolbar,areaTools:noteAreaTools,pen:noteDrawPen,eraser:noteDrawEraser,pan:noteDrawPan,select:noteDrawSelect,
+  color:noteDrawColor,size:noteDrawSize,ink:noteInkType,eraserMode:noteEraserMode,shape:noteShapeTool,
+  undo:noteDrawUndo,redo:noteDrawRedo,clear:noteDrawClear,zoomIn:noteZoomIn,zoomOut:noteZoomOut,zoomLabel:noteZoomLabel,
+  getState:()=>({tool:noteDrawTool,lineStyle:noteLineStyle,hasArea:!!noteAreaRect||noteSelection().length>0,preferences:noteBoardSettings}),setTool:selectNoteDrawTool,selectPen:chooseNotePen,
+  setLineStyle:value=>{noteLineStyle=value;captureNotePen();},
+  setLaserWidth:value=>{noteBoardSettings.laserWidth=value;noteSaveBoardPreferences(noteBoardSettings);updateNoteDrawingCursor();},
+  setOpacity:value=>{noteBoardSettings.pens.highlighter.opacity=value;noteSaveBoardPreferences(noteBoardSettings);},
+  setPalette:palette=>{noteBoardSettings.palette=palette;noteSaveBoardPreferences(noteBoardSettings);},
+  stamp:async()=>{try{await prepareNoteLogo();selectNoteDrawTool('stamp');noteAreaHint.textContent='Toque no quadro para carimbar a logo do Hub.';}catch{noteAreaHint.textContent='Não foi possível carregar a logo. Tente novamente.';}},
+  close:()=>{},
+  settings:()=>openWhiteboardSettings({host:noteStudioModal,getSettings:()=>noteBoardSettings,setSettings:setNoteBoardPreferences}),
+  text:()=>editNoteText(),
+  importFile:async file=>{const tabId=getActiveTab()?.id;try{const canvas=file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')?await loadWhiteboardPDF(file,chooseNotePDFPage):await loadWhiteboardImage(file);if(canvas&&getActiveTab()?.id===tabId)addNoteBitmap(canvas);}catch(error){noteMessage(error.message||'Não foi possível abrir o arquivo.');}},
+  exportFile:async type=>{try{const canvas=noteExportCanvas();if(type==='pdf')downloadWhiteboard(await canvasPDF(canvas),'quadro.pdf');else canvas.toBlob(blob=>{if(blob)downloadWhiteboard(blob,'quadro.png');},'image/png');}catch(error){noteMessage(error.message);}}
 });
 </script>
 </body>

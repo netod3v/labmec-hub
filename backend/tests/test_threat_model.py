@@ -43,6 +43,17 @@ class ThreatModelTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 413)
 
+    def test_chunked_json_at_the_limit_is_accepted(self):
+        self.login()
+        self.app.config['MAX_CONTENT_LENGTH'] = 128
+        prefix, suffix = b'{"paths":[],"padding":"', b'"}'
+        for size, expected in ((128, 200), (129, 413)):
+            payload = prefix + b'x' * (size - len(prefix) - len(suffix)) + suffix
+            response = self.client.post('/api/sync', data=payload, content_type='application/json',
+                                        headers={'X-CSRF-Token': self.csrf},
+                                        environ_overrides={'CONTENT_LENGTH': '', 'wsgi.input_terminated': True})
+            self.assertEqual(response.status_code, expected)
+
     def test_admin_unit_assignment_is_logged_and_grants_private_access(self):
         self.login()
         self.assertEqual(self.write('/api/admin/users/bob/units', {'units': ['LACAM']}, 'PATCH').status_code, 403)
@@ -81,6 +92,51 @@ class ThreatModelTests(unittest.TestCase):
         self.login()
         statuses = [self.client.get('/api/search?q=pesquisa').status_code for _ in range(3)]
         self.assertEqual(statuses, [200, 200, 429])
+
+    def test_new_message_resets_old_conversation_deletion_consent(self):
+        self.login()
+        path = '/api/data/dms/alice__bob'
+        self.assertEqual(self.write(path + '/messages/old', {'from': 'alice', 'text': 'old', 'ts': 1}, 'PUT').status_code, 200)
+        self.assertEqual(self.write('/api/conversations/delete', {'conversation': 'alice__bob'}, 'POST').status_code, 200)
+        self.login('bob')
+        self.assertEqual(self.write(path + '/messages/new', {'from': 'bob', 'text': 'new', 'ts': 2}, 'PUT').status_code, 200)
+        self.assertEqual(self.write('/api/conversations/delete', {'conversation': 'alice__bob'}, 'POST').status_code, 200)
+        self.assertIsNotNone(self.database.document('dms', 'alice__bob'))
+        self.login()
+        self.assertEqual(set(self.client.get(path).json['data']['messages']), {'new'})
+        self.assertNotIn('deletedFor', self.client.get(path).json['data'])
+        self.assertEqual(self.write('/api/conversations/delete', {'conversation': 'alice__bob'}, 'POST').status_code, 200)
+        self.assertIsNone(self.database.document('dms', 'alice__bob'))
+
+    def test_cannot_destroy_other_participants_history_or_forge_deletion(self):
+        self.login()
+        path = '/api/data/dms/alice__bob'
+        self.write(path + '/messages/one', {'from': 'alice', 'text': 'retained', 'ts': 1}, 'PUT')
+        self.assertEqual(self.write(path, method='DELETE').status_code, 403)
+        self.assertEqual(self.write(path + '/deletedFor', {'bob': True}, 'PUT').status_code, 403)
+        self.assertEqual(self.write('/api/conversations/delete', {'conversation': 'bob__carol'}, 'POST').status_code, 403)
+        self.assertEqual(self.database.document('dms', 'alice__bob')['messages']['one']['text'], 'retained')
+
+    def test_units_editor_rejects_unknown_units_and_support_write_access(self):
+        self.database.accounts['alice']['profile']['isSupport'] = True
+        self.login()
+        self.assertEqual(self.write('/api/admin/users/bob/units', {'units': ['LACAM']}).status_code, 403)
+        self.database.accounts['alice']['profile']['isAdmin'] = True
+        self.login()
+        for body in ({'units': []}, {'units': ['Unknown']}, {'units': 'LACAM'}, {'units': [True]}):
+            self.assertEqual(self.write('/api/admin/users/bob/units', body).status_code, 400)
+        self.assertEqual(self.client.get('/api/admin/audit').json['total'], 0)
+        self.assertEqual(self.write('/api/admin/users/bob/units', {'units': ['LACAM', 'LabNeuroMusc']}).status_code, 200)
+        self.assertEqual(self.client.get('/api/admin/users?q=bob').json['items'][0]['units'], ['LACAM', 'LabNeuroMusc'])
+
+    def test_nested_unsafe_keys_are_rejected_but_message_text_is_preserved(self):
+        self.login()
+        for key in ('__proto__', 'constructor', 'unsafe"key'):
+            result = self.write('/api/data/posts/invalid', {'uid': 'alice', 'text': 'text', 'extra': {'nested': {key: True}}}, 'PUT')
+            self.assertEqual(result.status_code, 400)
+        body = {'uid': 'alice', 'text': 'Text with <tags>, "quotes" and emoji.'}
+        self.assertEqual(self.write('/api/data/posts/valid', body, 'PUT').status_code, 200)
+        self.assertEqual(self.database.document('posts', 'valid')['text'], body['text'])
 
     def test_uploaded_html_and_svg_assets_receive_a_restrictive_csp(self):
         response = self.client.get('/assets/password-reset.html')

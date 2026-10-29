@@ -42,3 +42,20 @@ CREATE TABLE IF NOT EXISTS login_attempts (
     attempts INTEGER NOT NULL,
     started_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Backend-only tables: Supabase anonymous/authenticated clients must not bypass Flask.
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE login_attempts ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE users, documents, files, login_attempts FROM PUBLIC;
+DO $hub_security$
+DECLARE role_name TEXT;
+BEGIN
+    FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
+            EXECUTE format('REVOKE ALL ON TABLE users, documents, files, login_attempts FROM %I', role_name);
+        END IF;
+    END LOOP;
+END;
+$hub_security$;

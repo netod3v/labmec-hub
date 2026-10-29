@@ -1,0 +1,12 @@
+.git
+.env
+.venv
+var
+**/__pycache__
+**/*.pyc
+.env.*
+!.env.example
+.vscode
+*.log
+*.zip
+*.dump

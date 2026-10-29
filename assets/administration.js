@@ -1,7 +1,7 @@
 const roles={member:'Usuário',support:'Suporte',admin:'Administrador'};
 const statuses={active:'Ativa',blocked:'Bloqueada',removed:'Excluída'};
 const affiliations={undergraduate:'Graduação',scientific_initiation:'Iniciação científica',masters:'Mestrado',doctorate:'Doutorado',postdoc:'Pós-doutorado',researcher:'Pesquisador',professor:'Professor',technician:'Técnico',collaborator:'Colaborador',other:'Outro'};
-const actions={'user.permissions':'Alterou permissões','user.updated':'Atualizou um perfil','user.removed':'Excluiu uma conta do Hub','content.deleted':'Excluiu conteúdo','file.deleted':'Excluiu um arquivo'};
+const actions={'user.permissions':'Alterou permissões','user.units':'Alterou as unidades','user.updated':'Atualizou um perfil','user.removed':'Excluiu uma conta do Hub','content.deleted':'Excluiu conteúdo','file.deleted':'Excluiu um arquivo'};
 const date=value=>value?new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'Não registrado';
 function node(tag,text,className){const element=document.createElement(tag);if(text!==undefined)element.textContent=text;if(className)element.className=className;return element;}
 function action(text,handler,className='admin-action'){const element=node('button',text,className);element.type='button';element.onclick=handler;return element;}
@@ -9,12 +9,12 @@ function action(text,handler,className='admin-action'){const element=node('butto
 export function initializeAdministration({button,request,getUid,getProfile,openModal,closeModal}){
  const modal=node('div',undefined,'modal-overlay hidden');modal.id='admin-modal';
  modal.innerHTML=`<section class="modal-box admin-page" role="dialog" aria-modal="true" aria-labelledby="admin-title">
- <div class="modal-head"><button type="button" class="modal-close admin-back" aria-label="Voltar à tela anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Voltar</span></button><div><strong id="admin-title">Administração</strong><span>Gestão do LABIOMEC Hub</span></div><button type="button" class="admin-refresh">↻ Atualizar</button></div>
+ <div class="modal-head"><button type="button" class="modal-close admin-back" aria-label="Voltar à tela anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Voltar</span></button><div><strong id="admin-title">Administração</strong><span>Gestão do LABIOMEC Hub</span></div><button type="button" class="admin-refresh" aria-label="Atualizar dados" title="Atualizar dados"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 11.5-1L20 9M4 15l2.5 3A7 7 0 0 0 18 17"/></svg><span>Atualizar</span></button></div>
  <div class="admin-shell"><nav class="admin-tabs" role="tablist" aria-label="Áreas administrativas"><button type="button" role="tab" id="admin-tab-overview" data-tab="overview" aria-controls="admin-content">Visão geral</button><button type="button" role="tab" id="admin-tab-users" data-tab="users" aria-controls="admin-content">Usuários</button><button type="button" role="tab" id="admin-tab-audit" data-tab="audit" aria-controls="admin-content">Histórico</button></nav>
  <div class="admin-caption"></div><p class="admin-status" role="status" aria-live="polite"></p><div id="admin-content" role="tabpanel"></div></div></section>`;
  document.body.append(modal);
  const content=modal.querySelector('#admin-content'),status=modal.querySelector('.admin-status'),refresh=modal.querySelector('.admin-refresh'),back=modal.querySelector('.admin-back');
- let opened=false,tab='overview',page=1,query='',filter='all',role='all',controller,version=0,debounce,focusTimer,rows=[],selected=null,canManage=false,mutating=false;
+ let opened=false,tab='overview',page=1,query='',filter='all',role='all',controller,version=0,debounce,focusTimer,rows=[],knownUnits=[],selected=null,canManage=false,mutating=false;
  const allowed=()=>{const p=getProfile();return p?.isAdmin===true||p?.isSupport===true;};
  function clear(){controller?.abort();version++;clearTimeout(debounce);clearTimeout(focusTimer);content.replaceChildren();rows=[];selected=null;status.textContent='';}
  function close(restore=true){opened=false;clear();closeModal(modal);if(restore)focusTimer=setTimeout(()=>{if((document.activeElement===document.body||modal.contains(document.activeElement))&&button.getClientRects().length&&!button.closest('[inert]'))button.focus({preventScroll:true});},260);}
@@ -47,6 +47,12 @@ export function initializeAdministration({button,request,getUid,getProfile,openM
   selected=user.id;const head=node('div',undefined,'admin-detail-heading');head.append(node('h2',user.name),action('Fechar detalhes',()=>{selected=null;panel.hidden=true;content.querySelector(`[data-user="${CSS.escape(user.id)}"]`)?.focus();}));panel.append(head);
   const list=node('dl');
   for(const [label,value] of [['E-mail',user.email],['Identificador',user.id],['Unidades',user.units.join(' · ')||'Não informado'],['Vínculo',affiliations[user.affiliation]||'Não informado'],['Cadastro',date(user.createdAt)],['Último acesso registrado',date(user.lastSeen)],['Situação',statuses[user.status]],['Acesso',roles[user.role]]]){list.append(node('dt',label),node('dd',value));}panel.append(list);
+  if(canManage&&user.status!=='removed'){
+   const editor=node('fieldset',undefined,'admin-unit-editor');editor.append(node('legend','Unidades do laboratório'));
+   const choices=[...new Set([...knownUnits,...user.units])].sort();
+   for(const unit of choices){const label=node('label',undefined,'admin-unit-option'),input=node('input');input.type='checkbox';input.value=unit;input.checked=user.units.includes(unit);label.append(input,node('span',unit));editor.append(label);}
+   editor.append(action('Salvar unidades',()=>{const units=[...editor.querySelectorAll('input:checked')].map(input=>input.value);if(!units.length){status.textContent='Selecione pelo menos uma unidade.';return;}changeUser(user,'units',units);}));panel.append(editor);
+  }
   if(canManage&&user.status!=='removed'&&user.id!==getUid()){
    const row=node('div',undefined,'admin-role-editor'),label=node('label','Nível de acesso'),select=node('select');select.setAttribute('aria-label','Nível de acesso de '+user.name);
    for(const [value,text] of Object.entries(roles)){const option=node('option',text);option.value=value;select.append(option);}select.value=user.role;
@@ -62,7 +68,7 @@ export function initializeAdministration({button,request,getUid,getProfile,openM
   if(focus){panel.tabIndex=-1;panel.focus({preventScroll:true});panel.scrollIntoView({block:'nearest',behavior:'instant'});}
  }
  function users(result){
-  rows=result.items;canManage=result.canManageUsers;const area=content.querySelector('.admin-users-result');area.replaceChildren();
+  rows=result.items;knownUnits=result.knownUnits||[];canManage=result.canManageUsers;const area=content.querySelector('.admin-users-result');area.replaceChildren();
   const table=node('table',undefined,'admin-user-table'),thead=node('thead'),tr=node('tr');
   for(const text of ['Usuário','E-mail','Acesso','Situação','Último acesso','']){const th=node('th',text);th.scope='col';tr.append(th);}thead.append(tr);table.append(thead);const tbody=node('tbody');
   for(const user of rows){
@@ -76,7 +82,7 @@ export function initializeAdministration({button,request,getUid,getProfile,openM
  function history(result){
   content.replaceChildren();content.append(node('h2','Histórico administrativo'),node('p','Ações registradas a partir da implantação deste painel. Mensagens privadas e notas pessoais não são exibidas.','admin-note'));
   const list=node('div',undefined,'admin-history');
-  for(const item of result.items){const card=node('article');card.append(node('strong',actions[item.action]||'Ação administrativa'),node('p',`${item.actorName} → ${item.targetName||item.targetId}`),node('time',date(item.ts)));if(item.details?.fields?.length)card.append(node('small','Campos alterados: '+item.details.fields.join(', ')));if(item.action==='user.permissions'){const flags=item.details.after||{};card.append(node('small','Acesso definido: '+roles[flags.isAdmin?'admin':flags.isSupport?'support':'member']));}list.append(card);}
+  for(const item of result.items){const card=node('article');card.append(node('strong',actions[item.action]||'Ação administrativa'),node('p',`${item.actorName} → ${item.targetName||item.targetId}`),node('time',date(item.ts)));if(item.details?.fields?.length)card.append(node('small','Campos alterados: '+item.details.fields.join(', ')));if(item.action==='user.permissions'){const flags=item.details.after||{};card.append(node('small','Acesso definido: '+roles[flags.isAdmin?'admin':flags.isSupport?'support':'member']));}if(item.action==='user.units')card.append(node('small','Unidades definidas: '+(item.details.after||[]).join(' · ')));list.append(card);}
   if(!result.items.length)list.append(node('p','Nenhuma ação administrativa registrada por enquanto.','admin-empty'));
   content.append(list,pager(result));
  }
@@ -91,10 +97,11 @@ export function initializeAdministration({button,request,getUid,getProfile,openM
   finally{if(run===version){refresh.disabled=false;content.removeAttribute('aria-busy');}}
  }
  async function changeUser(user,type,value){
-  if(mutating||!canManage)return;mutating=true;const account=getUid();const panel=content.querySelector('.admin-detail');panel?.querySelectorAll('button,select').forEach(element=>element.disabled=true);
+  if(mutating||!canManage)return;mutating=true;const account=getUid();const panel=content.querySelector('.admin-detail');panel?.querySelectorAll('button,select,input').forEach(element=>element.disabled=true);
   try{
-   await request(type==='role'?'/admin/users/'+encodeURIComponent(user.id)+'/role':'/users/'+encodeURIComponent(user.id),type==='role'?{method:'PATCH',body:JSON.stringify({role:value})}:{method:'DELETE'});
-   if(opened&&getUid()===account){await load();status.textContent=type==='role'?'Permissão atualizada e registrada no histórico.':'Conta excluída do Hub. As contribuições foram preservadas.';}
+   const editing=type==='role'||type==='units';
+   await request(editing?'/admin/users/'+encodeURIComponent(user.id)+'/'+type:'/users/'+encodeURIComponent(user.id),editing?{method:'PATCH',body:JSON.stringify({[type]:value})}:{method:'DELETE'});
+   if(opened&&getUid()===account){await load();status.textContent=type==='role'?'Permissão atualizada e registrada no histórico.':type==='units'?'Unidades atualizadas e registradas no histórico.':'Conta excluída do Hub. As contribuições foram preservadas.';}
   }catch(error){if(opened&&getUid()===account){details(user);status.textContent=error.message;}}
   finally{mutating=false;}
  }

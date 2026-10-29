@@ -7,7 +7,7 @@ from uuid import uuid4
 from flask import g, jsonify, request
 from werkzeug.exceptions import BadRequest, NotFound
 
-from .permissions import is_admin, require
+from .permissions import DEFAULT_UNITS, LEGACY_AFFILIATION_UNITS, is_admin, require
 
 
 def now_ms():
@@ -95,11 +95,12 @@ def register_administration(app):
             raise BadRequest('Filtros inválidos.')
         with app.database.transaction() as repository:
             rows = user_rows(repository)
+            known_units = sorted((DEFAULT_UNITS | {unit for row in rows for unit in row['units']}) - LEGACY_AFFILIATION_UNITS)
         rows = [u for u in rows if (not query or query in (u['name'] + ' ' + u['email'] + ' ' + u['id']).casefold())
                 and (status == 'all' or (u['online'] if status == 'online' else u['status'] == status))
                 and (role == 'all' or u['role'] == role)]
         rows.sort(key=lambda u: (u['name'].casefold(), u['id']))
-        return jsonify(**page(rows), canManageUsers=is_admin(g.user))
+        return jsonify(**page(rows), canManageUsers=is_admin(g.user), knownUnits=known_units)
 
     @app.get('/api/admin/audit')
     def history():
@@ -131,4 +132,33 @@ def register_administration(app):
                 profile.update(after)
                 repository.update_profile(uid, profile)
                 audit(repository, actor, 'user.permissions', uid, profile.get('name'), {'before': before, 'after': after})
+        return jsonify(ok=True)
+
+    @app.patch('/api/admin/users/<uid>/units')
+    def assign_units(uid):
+        require(is_admin(g.user))
+        body = request.get_json()
+        if (not isinstance(body, dict) or set(body) != {'units'} or not isinstance(body['units'], list)
+                or not 1 <= len(body['units']) <= 30
+                or any(not isinstance(unit, str) or not unit.strip() or len(unit) > 120 for unit in body['units'])):
+            raise BadRequest('Selecione pelo menos uma unidade válida, até o limite de 30.')
+        chosen = set(body['units'])
+        with app.database.transaction() as repository:
+            repository.lock_document('_admin_roles', 'global')
+            actor = repository.user(g.user['id'])
+            require(actor is not None and is_admin(actor))
+            repository.lock_document('users', uid)
+            target = repository.user(uid)
+            if not target or target['profile'].get('isRemoved'):
+                raise NotFound('Conta não encontrada.')
+            profile = dict(target['profile'])
+            before = sorted(k for k, enabled in (profile.get('sectors') or {}).items() if enabled)
+            known = DEFAULT_UNITS | {k for row in repository.users() for k in (row['profile'].get('sectors') or {})}
+            permitted = (known - LEGACY_AFFILIATION_UNITS) | set(before)
+            if not chosen <= permitted:
+                raise BadRequest('Escolha uma unidade existente no laboratório.')
+            if chosen != set(before):
+                profile['sectors'] = {unit: True for unit in sorted(chosen)}
+                repository.update_profile(uid, profile)
+                audit(repository, actor, 'user.units', uid, profile.get('name'), {'before': before, 'after': sorted(chosen)})
         return jsonify(ok=True)

@@ -40,6 +40,8 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
       TRUSTED_PROXY_COUNT: ${TRUSTED_PROXY_COUNT:-0}
       UPLOADS_PER_HOUR: ${UPLOADS_PER_HOUR:-200}
+      SEARCH_LIMIT: ${SEARCH_LIMIT:-30}
+      SEARCH_WINDOW_SECONDS: ${SEARCH_WINDOW_SECONDS:-60}
     volumes:
       - lab_files:/data/files
     # Endurecimento do contêiner: sem privilégios extras e com limite de processos.
@@ -62,7 +64,9 @@ services:
 
   voice:
     image: livekit/livekit-server:v1.13.10
-    command: ["--config", "/etc/livekit.yaml", "--keys", "${LIVEKIT_API_KEY:-not-configured}: ${LIVEKIT_API_SECRET:-not-configured}"]
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?Defina LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET:?Defina LIVEKIT_API_SECRET}"
+    command: ["--config", "/etc/livekit.yaml"]
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml:ro
     ports:

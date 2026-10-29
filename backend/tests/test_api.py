@@ -139,21 +139,23 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(self.write('/api/data/users/alice', data).status_code, 403)
         self.assertEqual(self.write('/api/data/users/alice', {'bio': 'Pesquisadora'}).status_code, 200)
 
-    def test_members_choose_affiliation_and_existing_units(self):
+    def test_members_choose_affiliation_but_admin_assigns_units(self):
         self.database.save_document('posts_private', 'LabNeuroMusc', {'notice': {'uid': 'bob', 'text': 'Equipe'}})
         self.login()
+        self.assertEqual(self.write('/api/data/users/alice', {'affiliation': 'masters'}).status_code, 200)
+        self.assertEqual(self.write('/api/data/users/alice', {'sectors': {'LACAM': True, 'LabNeuroMusc': True}}).status_code, 403)
         self.assertEqual(self.client.get('/api/data/posts_private/LabNeuroMusc').status_code, 403)
-        response = self.write('/api/data/users/alice', {'affiliation': 'masters', 'sectors': {'LACAM': True, 'LabNeuroMusc': True}})
-        self.assertEqual(response.status_code, 200)
-        profile = self.client.get('/api/data/users/alice').json['data']
-        self.assertEqual(profile['affiliation'], 'masters')
-        self.assertTrue(profile['sectors']['LabNeuroMusc'])
-        self.assertEqual(self.client.get('/api/data/posts_private/LabNeuroMusc').status_code, 200)
         self.assertEqual(self.write('/api/data/users/bob', {'affiliation': 'masters'}).status_code, 403)
-        for data in ({'affiliation': 'admin'}, {'affiliation': []}, {'affiliation': None}, {'sectors': None}, {'sectors': {}}, {'sectors': ['LACAM']}, {'sectors': {'LACAM': 'yes'}}):
-            self.assertEqual(self.write('/api/data/users/alice', data).status_code, 400)
-        self.assertEqual(self.write('/api/data/users/alice', {'affiliation': 'collaborator', 'sectors': {'LACAM': True}}).status_code, 200)
-        self.assertEqual(self.client.get('/api/data/posts_private/LabNeuroMusc').status_code, 403)
+        for value in ('admin', [], None):
+            self.assertEqual(self.write('/api/data/users/alice', {'affiliation': value}).status_code, 400)
+        for value in (None, {}, ['LACAM'], {'LACAM': 'yes'}):
+            self.assertEqual(self.write('/api/data/users/alice', {'sectors': value}).status_code, 403)
+        self.database.accounts['carol']['profile']['isAdmin'] = True
+        self.login('carol')
+        self.assertEqual(self.write('/api/admin/users/alice/units', {'units': ['LACAM', 'LabNeuroMusc']}).status_code, 200)
+        self.login()
+        self.assertEqual(self.client.get('/api/data/posts_private/LabNeuroMusc').status_code, 200)
+        self.assertEqual(self.write('/api/data/users/alice', {'affiliation': 'collaborator'}).status_code, 200)
 
     def test_academic_groups_cannot_be_chosen_as_new_laboratory_units(self):
         self.login()
