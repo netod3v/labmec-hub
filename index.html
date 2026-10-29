@@ -3329,7 +3329,7 @@ body.site-policy-open{overflow:hidden!important;}
 
   <div class="modal-overlay hidden" id="note-studio-modal" role="dialog" aria-modal="true" aria-label="Editor de notas">
     <div class="modal-box note-studio-box">
-      <div class="modal-head"><div><strong>Editor de notas</strong><span id="note-studio-title">Nota atual</span></div><div class="note-studio-head-actions"><div class="note-mode-switch" aria-label="Modo do editor"><button class="note-mode-btn active" id="note-mode-text" type="button" title="Editar texto" aria-label="Editar texto"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></svg></button><button class="note-mode-btn" id="note-mode-draw" type="button" title="Abrir área de desenho" aria-label="Abrir área de desenho"><svg viewBox="0 0 24 24"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20zM13.5 8l3 3"/></svg></button></div><button class="note-back-btn" id="note-studio-close" type="button" aria-label="Voltar ao bloco de notas" title="Voltar ao bloco de notas"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span>Voltar</span></button></div></div>
+      <div class="modal-head"><div><strong>Editor de notas</strong><span id="note-studio-title">Nota atual</span></div><div class="note-studio-head-actions"><div class="note-mode-switch" aria-label="Modo do editor"><button class="note-mode-btn active" id="note-mode-text" type="button" title="Editar texto" aria-label="Editar texto"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></svg></button><button class="note-mode-btn" id="note-mode-draw" type="button" title="Abrir área de desenho" aria-label="Abrir área de desenho"><svg viewBox="0 0 24 24"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20zM13.5 8l3 3"/></svg></button></div><button class="note-back-btn note-fullscreen-button" id="note-studio-fullscreen" type="button" aria-label="Entrar em tela cheia" aria-pressed="false" title="Entrar em tela cheia"><svg class="fullscreen-enter" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/></svg><svg class="fullscreen-exit" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h5V3M21 8h-5V3M16 21v-5h5M8 21v-5H3"/></svg></button><button class="note-back-btn" id="note-studio-close" type="button" aria-label="Voltar ao bloco de notas" title="Voltar ao bloco de notas"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span>Voltar</span></button></div></div>
       <div class="modal-body note-studio-body" id="note-studio-body" data-mode="text">
         <div class="note-format-bar" id="note-format-bar">
           <button class="note-format-btn" type="button" data-note-command="bold" title="Negrito">B</button><button class="note-format-btn" type="button" data-note-command="italic" title="Itálico"><i>I</i></button><button class="note-format-btn" type="button" data-note-command="underline" title="Sublinhado"><u>U</u></button>
@@ -3444,6 +3444,7 @@ import { initializePostMediaViewer } from './assets/post-media-viewer.js';
 import { renderProfileActivity } from './assets/profile-activity.js';
 import { initializeGameRanking } from './assets/game-ranking.js';
 import { initializeMines } from './assets/mines-game.js';
+import { initializeNoteFullscreen } from './assets/note-fullscreen.js';
 import { initializeCallFullscreen } from './assets/call-fullscreen.js';
 import { initializeAdministration } from './assets/administration.js';
 import { initializeSettings, initializeMediaPreferences, prefersReducedMotion } from './assets/hub-preferences.js';
@@ -3547,6 +3548,7 @@ const noteCardLabel = document.getElementById('note-card-label');
 const openNoteStudioBtn = document.getElementById('open-note-studio-btn');
 const noteStudioModal = document.getElementById('note-studio-modal');
 const noteStudioClose = document.getElementById('note-studio-close');
+initializeNoteFullscreen({modal:noteStudioModal,button:document.getElementById('note-studio-fullscreen')});
 const noteStudioTitle = document.getElementById('note-studio-title');
 const noteStudioBody = document.getElementById('note-studio-body');
 const noteModeText = document.getElementById('note-mode-text');

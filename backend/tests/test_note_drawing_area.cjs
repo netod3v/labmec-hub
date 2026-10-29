@@ -488,6 +488,20 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     assert.ok(await run(()=>Array.from({length:100},(_,i)=>drawingTest.pixel(100,170+i)[3]).every(alpha=>alpha>0)),'visible cube edge stays continuous');
     const solidPreview=await run(()=>{const c=document.createElement('canvas');c.width=900;c.height=700;c.getContext('2d').drawImage(drawingTest.exportCanvas(),0,0);return c.toDataURL().split(',')[1];});
     fs.writeFileSync(path.join(process.env.TEMP||'/tmp','labmec-solid-shapes.png'),Buffer.from(solidPreview,'base64'));
+    await page.setContent('<div id="note-studio-modal" class="modal-overlay modal-visible"><div class="modal-box note-studio-box"><button id="fullscreen-test" type="button">Tela cheia</button></div></div>');
+    await page.addStyleTag({content:applicationCSS+'\n'+toolbarCSS});
+    await page.evaluate(async()=>{const {initializeNoteFullscreen}=await import('/assets/note-fullscreen.js');initializeNoteFullscreen({modal:document.getElementById('note-studio-modal'),button:document.getElementById('fullscreen-test')});});
+    await page.click('#fullscreen-test');
+    await page.waitForFunction(()=>document.getElementById('fullscreen-test').getAttribute('aria-pressed')==='true');
+    assert.equal(await page.evaluate(()=>document.fullscreenElement?.id),'note-studio-modal','fullscreen targets the note editor');
+    const fullscreenBox=await page.locator('.note-studio-box').boundingBox();
+    assert.ok(Math.abs(fullscreenBox.width-1600)<2&&Math.abs(fullscreenBox.height-1100)<2,'editor fills the fullscreen viewport');
+    await page.click('#fullscreen-test');await page.waitForFunction(()=>!document.fullscreenElement);
+    await page.evaluate(()=>{document.getElementById('note-studio-modal').requestFullscreen=()=>Promise.reject(new Error('unavailable'));});
+    await page.click('#fullscreen-test');await page.waitForFunction(()=>document.getElementById('note-studio-modal').classList.contains('note-fullscreen'));
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#fullscreen-test').getAttribute('aria-pressed'),'false','Escape exits the fallback fullscreen mode');
+    assert.equal(await page.locator('#note-studio-modal').isVisible(),true,'exiting fullscreen keeps the editor open');
     console.log('PASS: legacy drawing, shapes, laser, recognition, lasso/resize, text, custom shortcuts, settings, hide/reopen, mouse/keyboard/touch, image import, PDF round trip, responsive layout');
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -117,3 +117,8 @@ html:is([data-theme="dark"],[data-theme="black"]) .note-reference-toolbar .note-
 .note-shortcut-fixed{flex:0!important;font-size:11px;font-style:italic;color:var(--text-2,var(--ink));padding:5px 9px;border-radius:5px;background:var(--parchment);}
 .note-board-shortcut kbd{flex:none;white-space:nowrap;}
 @media(max-width:520px){.note-board-tool-list{grid-template-columns:minmax(0,1fr);}.note-board-shortcut{flex-wrap:wrap;}.note-board-shortcut>span:first-child{flex-basis:100%;}.note-recognition-switch{gap:12px;}.note-board-shortcut kbd{white-space:normal;}}
+
+.note-fullscreen-button .fullscreen-exit,.note-fullscreen-button.is-fullscreen .fullscreen-enter{display:none;}
+.note-fullscreen-button.is-fullscreen .fullscreen-exit{display:block;}
+#note-studio-modal:fullscreen,#note-studio-modal.note-fullscreen{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;padding:0;background:var(--paper);}
+#note-studio-modal:fullscreen .note-studio-box,#note-studio-modal.note-fullscreen .note-studio-box{width:100%;height:100%;max-width:none;max-height:none;margin:0;border:0;border-radius:0;}
