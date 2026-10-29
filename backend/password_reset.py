@@ -3,6 +3,8 @@ import hashlib
 import re
 import smtplib
 import ssl
+from concurrent.futures import ThreadPoolExecutor
+from threading import BoundedSemaphore
 from email.message import EmailMessage
 from email.utils import formataddr, parseaddr
 from html import escape
@@ -55,6 +57,34 @@ def send_reset_email(config, email, link):
         server.send_message(message)
 
 
+# Bounded queue: mail delivery must not hold an HTTP worker or disclose accounts.
+_mail_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix='hub-reset-mail')
+_mail_slots = BoundedSemaphore(4)
+
+
+def dispatch_reset_email(app, email, link):
+    def deliver():
+        try:
+            send_reset_email(app.config, email, link)
+        except (OSError, smtplib.SMTPException, ValueError):
+            app.logger.error('Falha no envio de recuperacao; verifique a configuracao SMTP.')
+        finally:
+            _mail_slots.release()
+
+    if app.testing:
+        # Existing integration tests replace SMTP and verify token round trips.
+        send_reset_email(app.config, email, link)
+        return
+    if not _mail_slots.acquire(blocking=False):
+        app.logger.warning('Fila de recuperacao ocupada; envio nao agendado.')
+        return
+    try:
+        _mail_executor.submit(deliver)
+    except RuntimeError:
+        _mail_slots.release()
+        app.logger.error('Servico de envio de recuperacao indisponivel.')
+
+
 def register_password_reset(app):
     serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'], salt='labiomec-password-reset-v1')
     generic_message = 'Se este e-mail tiver uma conta ativa, você receberá um link para redefinir a senha. Confira também o spam.'
@@ -89,7 +119,7 @@ def register_password_reset(app):
         if user and not user['profile'].get('isRemoved') and not user['profile'].get('isBanned'):
             token = serializer.dumps({'uid': user['id'], 'version': user['session_version']})
             try:
-                send_reset_email(app.config, email, origin.rstrip('/') + '/reset-password#token=' + token)
+                dispatch_reset_email(app, email, origin.rstrip('/') + '/reset-password#token=' + token)
             except (OSError, smtplib.SMTPException, ValueError):
                 # Não registra credenciais, endereço, conteúdo do e-mail ou token.
                 app.logger.error('Não foi possível enviar um e-mail de recuperação. Verifique a configuração SMTP.')

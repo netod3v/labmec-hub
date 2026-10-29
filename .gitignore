@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+var/
+*.dump
+*.log
+.env.*
+!.env.example
+.vscode/
+*.zip

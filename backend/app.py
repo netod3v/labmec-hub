@@ -1,5 +1,6 @@
 """API e arquivos estáticos do hub, no mesmo endereço (sem CORS aberto)."""
 import hashlib
+import math
 import os
 import re
 import secrets
@@ -16,7 +17,7 @@ import psycopg
 from dotenv import load_dotenv
 from flask import Flask, Response, g, jsonify, request, send_file, send_from_directory, session
 from .messages import visible_document
-from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound, TooManyRequests
+from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound, TooManyRequests, RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
@@ -47,6 +48,22 @@ def milliseconds():
     return int(time.time() * 1000)
 
 
+def validate_json(value, depth=0):
+    if depth > 32:
+        raise BadRequest('Dados com níveis demais de organização.')
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if (len(key) > 1024 or UNSAFE_PATH_CHARS.search(key)
+                    or any(part in {'__proto__', 'constructor', 'prototype'} for part in key.split('/'))):
+                raise BadRequest('Os dados contêm uma chave inválida.')
+            validate_json(item, depth + 1)
+    elif isinstance(value, list):
+        for item in value:
+            validate_json(item, depth + 1)
+    elif isinstance(value, float) and not math.isfinite(value):
+        raise BadRequest('Os dados contêm um número inválido.')
+
+
 @lru_cache(maxsize=1)
 def dummy_password_hash():
     """Hash descartável: mantém o tempo de resposta igual para contas que não existem."""
@@ -70,6 +87,8 @@ def create_app(settings=None, database=None):
         PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
         TRUSTED_PROXY_COUNT=int(os.environ.get('TRUSTED_PROXY_COUNT', '0')),
         UPLOADS_PER_HOUR=int(os.environ.get('UPLOADS_PER_HOUR', '200')),
+        SEARCH_LIMIT=int(os.environ.get('SEARCH_LIMIT', '30')),
+        SEARCH_WINDOW_SECONDS=int(os.environ.get('SEARCH_WINDOW_SECONDS', '60')),
         ALLOW_REGISTRATION=os.environ.get('ALLOW_REGISTRATION', 'false').lower() == 'true',
         ALLOW_LOCAL_FRAME_PREVIEW=os.environ.get('ALLOW_LOCAL_FRAME_PREVIEW', 'false').lower() == 'true',
         PUBLIC_ORIGIN=os.environ.get('PUBLIC_ORIGIN', '').rstrip('/'),
@@ -85,6 +104,12 @@ def create_app(settings=None, database=None):
     )
     if settings:
         app.config.update(settings)
+    voice_key, voice_secret = app.config['LIVEKIT_API_KEY'], app.config['LIVEKIT_API_SECRET']
+    if voice_key or voice_secret:
+        if not re.fullmatch(r'[A-Za-z0-9_-]{8,128}', voice_key or ''):
+            raise RuntimeError('Defina LIVEKIT_API_KEY com 8 a 128 letras, números, hífen ou sublinhado.')
+        if not voice_secret or len(voice_secret) < 32:
+            raise RuntimeError('Defina LIVEKIT_API_SECRET com pelo menos 32 caracteres, junto de LIVEKIT_API_KEY.')
     if not app.config['SECRET_KEY'] or len(app.config['SECRET_KEY']) < 32:
         raise RuntimeError('Defina SECRET_KEY com pelo menos 32 caracteres aleatórios.')
     if 'SUBSTITUA' in app.config['SECRET_KEY']:
@@ -108,8 +133,11 @@ def create_app(settings=None, database=None):
     def protect_request():
         if not request.path.startswith('/api/'):
             return
-        if request.path != '/api/files' and request.content_length and request.content_length > 8 * 1024 * 1024:
-            raise BadRequest('Dados muito grandes. Use a área de arquivos para enviar anexos.')
+        if request.path != '/api/files':
+            api_limit = min(app.config['MAX_CONTENT_LENGTH'], 8 * 1024 * 1024)
+            request.max_content_length = api_limit
+            if request.content_length is not None and request.content_length > api_limit:
+                raise RequestEntityTooLarge('Dados muito grandes. Use a área de arquivos para enviar anexos.')
         # Toda escrita exige token e origem compatível, inclusive o login.
         if request.method not in {'GET', 'HEAD', 'OPTIONS'}:
             token = request.headers.get('X-CSRF-Token', '')
@@ -117,10 +145,20 @@ def create_app(settings=None, database=None):
             origin = request.headers.get('Origin')
             expected_origin = app.config['PUBLIC_ORIGIN'] or request.host_url.rstrip('/')
             require(not origin or origin == expected_origin, 'Origem não autorizada.')
+        if request.is_json and request.path != '/api/files':
+            try:
+                # O byte adicional distingue um corpo exatamente no limite de um
+                # stream truncado, antes que o parser o confunda com JSON inválido.
+                request.max_content_length = api_limit + 1
+                if len(request.get_data(cache=True)) > api_limit:
+                    raise RequestEntityTooLarge('Dados muito grandes. Use a área de arquivos para enviar anexos.')
+                validate_json(request.get_json())
+            except RecursionError:
+                raise BadRequest('Dados com níveis demais de organização.') from None
         if request.path in {'/api/session', '/api/health', '/api/auth/login', '/api/auth/register', '/api/auth/logout', '/api/auth/forgot-password', '/api/auth/reset-password'}:
             return
         with app.database.transaction() as repository:
-            user = repository.user(session.get('user_id', ''))
+            user = authenticated_user(repository)
         if not user or user['profile'].get('isRemoved') or user['session_version'] != session.get('version'):
             return jsonify(error='Entre na sua conta.', code='auth/unauthenticated'), 401
         require(not user['profile'].get('isBanned'), 'Esta conta está bloqueada.')
@@ -168,6 +206,9 @@ def create_app(settings=None, database=None):
         response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
         response.headers['Permissions-Policy'] = ('camera=(self), microphone=(self), display-capture=(self), '
                                                   'geolocation=(), payment=(), usb=(), interest-cohort=()')
+        if request.path.startswith('/assets/') and response.mimetype in {'text/html', 'image/svg+xml'}:
+            response.headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'; sandbox; frame-ancestors 'none'"
+            response.headers['X-Frame-Options'] = 'DENY'
         if app.config['SESSION_COOKIE_SECURE']:
             response.headers['Strict-Transport-Security'] = 'max-age=31536000'
         if request.path.startswith('/api/'):
@@ -240,9 +281,33 @@ def create_app(settings=None, database=None):
         valid = check_password_hash(user['password_hash'] if usable else dummy_password_hash(), password)
         return usable and valid
 
+    def session_key():
+        token = session.get('sid')
+        return hashlib.sha256(token.encode()).hexdigest() if isinstance(token, str) and len(token) == 43 else None
+
+    def authenticated_user(repository):
+        key = session_key()
+        record = repository.document('_sessions', key) if key else None
+        if not record or record.get('uid') != session.get('user_id') or record.get('expires', 0) <= time.time():
+            return None
+        user = repository.user(record['uid'])
+        if not user or user['session_version'] != session.get('version') or record.get('version') != user['session_version']:
+            return None
+        return user
+
     def establish_session(user):
+        token = secrets.token_urlsafe(32)
+        key = hashlib.sha256(token.encode()).hexdigest()
+        with app.database.transaction() as repository:
+            old_key = session_key()
+            if old_key:
+                repository.save_document('_sessions', old_key, None)
+            repository.save_document('_sessions', key, {
+                'uid': user['id'], 'version': user['session_version'],
+                'expires': time.time() + app.config['PERMANENT_SESSION_LIFETIME'].total_seconds(),
+            })
         session.clear()
-        session.update(user_id=user['id'], version=user['session_version'], csrf=secrets.token_urlsafe(32))
+        session.update(user_id=user['id'], version=user['session_version'], sid=token, csrf=secrets.token_urlsafe(32))
         session.permanent = True
         return jsonify(user={'uid': user['id'], 'email': user['email']}, csrf=session['csrf'])
 
@@ -252,7 +317,7 @@ def create_app(settings=None, database=None):
         user = None
         if session.get('user_id'):
             with app.database.transaction() as repository:
-                user = repository.user(session['user_id'])
+                user = authenticated_user(repository)
             if user and (user['session_version'] != session.get('version') or user['profile'].get('isBanned') or user['profile'].get('isRemoved')):
                 user = None
         return jsonify(user={'uid': user['id'], 'email': user['email']} if user else None, csrf=session['csrf'])
@@ -260,6 +325,10 @@ def create_app(settings=None, database=None):
     @app.post('/api/auth/<action>')
     def authenticate(action):
         if action == 'logout':
+            key = session_key()
+            if key:
+                with app.database.transaction() as repository:
+                    repository.save_document('_sessions', key, None)
             session.clear()
             return jsonify(ok=True)
         if action not in {'login', 'register'}:
@@ -409,6 +478,11 @@ def create_app(settings=None, database=None):
                     raise BadRequest('Presença inválida.')
                 new = {'online': new.get('online') is True, 'lastSeen': milliseconds()}
             validate_write(g.user, collection, document_id, old, new)
+            if collection == 'dms' and new is not None:
+                # Mensagens novas iniciam um novo ciclo: ocultações anteriores continuam
+                # privadas, mas não autorizam apagar mensagens que chegaram depois.
+                if set(new.get('messages') or {}) - set((old or {}).get('messages') or {}):
+                    new.pop('deletedFor', None)
             bind_post_attachments(repository, g.user, collection, document_id, old, new)
             achievements = record_achievements(repository, g.user, collection, document_id, old, new)
             first_post = record_first_post(repository, g.user, collection, document_id, old, new)
@@ -451,7 +525,7 @@ def create_app(settings=None, database=None):
                                                lastFrom=latest.get('from'))
                 else:
                     summaries.pop(other_id, None)
-            repository.save_document('conversations', owner_id, summaries)
+            repository.save_document('conversations', owner_id, summaries or None)
 
     @app.post('/api/messages/delete')
     def delete_message():
@@ -477,6 +551,28 @@ def create_app(settings=None, database=None):
             update_conversation_summaries(repository, conversation_id, None, chat)
         return jsonify(ok=True)
 
+    @app.post('/api/conversations/delete')
+    def hide_conversation():
+        body = request.get_json()
+        if not isinstance(body, dict) or not isinstance(body.get('conversation'), str):
+            raise BadRequest('Informe a conversa que deseja ocultar.')
+        conversation_id = body['conversation']
+        require(can_read(g.user, 'dms', conversation_id, None))
+        with app.database.transaction() as repository:
+            repository.lock_document('dms', conversation_id)
+            chat = repository.document('dms', conversation_id)
+            if chat is not None:
+                hidden = dict(chat.get('deletedFor') or {})
+                hidden[g.user['id']] = True
+                for message in (chat.get('messages') or {}).values():
+                    message.setdefault('hiddenFor', {})[g.user['id']] = True
+                chat['deletedFor'] = hidden
+                if all(hidden.get(uid) for uid in conversation_id.split('__')):
+                    chat = None
+                repository.save_document('dms', conversation_id, chat)
+            update_conversation_summaries(repository, conversation_id, None, chat)
+        return jsonify(ok=True)
+
     def apply_change(old, tail):
         if request.method == 'DELETE':
             return replace_path(old, tail, None)
@@ -494,6 +590,11 @@ def create_app(settings=None, database=None):
 
     @app.get('/api/search')
     def global_search():
+        key = hashlib.sha256(('search:' + (request.remote_addr or '')).encode()).hexdigest()
+        with app.database.transaction() as repository:
+            allowed = repository.attempt_allowed(key, limit=app.config['SEARCH_LIMIT'], window_seconds=app.config['SEARCH_WINDOW_SECONDS'])
+        if not allowed:
+            raise TooManyRequests('Muitas buscas em pouco tempo. Aguarde um instante e tente novamente.')
         with app.database.transaction() as repository:
             result = search_hub(repository, g.user, request.args.get('q', ''),
                                 request.args.get('category', 'all'), request.args.get('scope', 'all'))

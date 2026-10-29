@@ -1,0 +1,11 @@
+.git/
+.env
+.env.*
+.venv/
+.vscode/
+var/
+**/__pycache__/
+**/*.pyc
+*.dump
+*.zip
+*.log

@@ -186,9 +186,10 @@ def validate_write(user, collection, document_id, old, new):
         return
     if collection == 'dms':
         if new is None:
-            return  # Qualquer participante pode excluir a conversa inteira.
+            require(False, 'Use a opção de ocultar conversa; isso preserva as mensagens da outra pessoa.')
         require(isinstance(new, dict))
-        require(set(new) <= {'messages', 'readBy'})
+        require(set(new) <= {'messages', 'readBy', 'deletedFor'})
+        require((old or {}).get('deletedFor') == new.get('deletedFor'), 'O estado de exclusão é controlado pelo servidor.')
         validate_own_map((old or {}).get('readBy'), new.get('readBy'), user)
         for key in set((old or {}).get('messages') or {}) | set(new.get('messages') or {}):
             before = ((old or {}).get('messages') or {}).get(key)
@@ -218,6 +219,7 @@ def update_profile(user, target, new, known_units=None):
             if key in {'isAdmin', 'isSupport'}:
                 require(user['id'] != target['id'], 'Outro administrador precisa alterar o seu acesso.')
         elif key in {'sectors', 'sector'}:
+            require(is_admin(user), 'Somente a administra\u00e7\u00e3o pode liberar ou alterar o acesso a unidades.')
             available = DEFAULT_UNITS | set(known_units or ())
             if key == 'sectors':
                 selected = {} if new.get(key) is None else new[key]
@@ -250,7 +252,7 @@ def update_profile(user, target, new, known_units=None):
     completing_profile = 'affiliation' in new or bool(old.get('affiliation'))
     if completing_profile and (not isinstance(new.get('affiliation'), str) or new['affiliation'] not in AFFILIATIONS):
         raise BadRequest('Escolha um vínculo acadêmico válido.')
-    if completing_profile and not any((new.get('sectors') or {}).values()):
+    if completing_profile and is_admin(user) and not any((new.get('sectors') or {}).values()):
         raise BadRequest('Selecione pelo menos uma unidade ou equipe do laboratório.')
     return new
 
