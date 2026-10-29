@@ -407,6 +407,13 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     await page.mouse.move(1450,820);await page.mouse.down();await page.mouse.move(1470,840);await page.mouse.up();
     assert.ok((await run(()=>drawingTest.objects())).some(o=>(o.points?.at(-1)?.x??o.x2)>2800),'the formerly empty edge accepts strokes after zooming out');
     assert.equal((await run(()=>drawingTest.state())).saved.drawingWidth,3000,'expanded dimensions are saved with the drawing');
+    await run(()=>drawingTest.fitViewport(1500,900,1));
+    await page.mouse.move(600,400);await page.keyboard.down('Shift');await page.mouse.wheel(0,180);await page.keyboard.up('Shift');await page.waitForTimeout(80);
+    assert.ok(await page.locator('canvas').evaluate(el=>el.parentElement.scrollLeft)>0,'Shift plus wheel pans horizontally');
+    assert.equal(await page.locator('canvas').evaluate(el=>el.parentElement.scrollTop),0,'Shift plus wheel does not pan vertically');
+    assert.equal(await run(()=>drawingTest.state().zoom),1,'Shift plus wheel leaves zoom unchanged');
+    await page.keyboard.down('Shift');await page.mouse.wheel(0,-180);await page.keyboard.up('Shift');await page.waitForTimeout(80);
+    assert.equal(await page.locator('canvas').evaluate(el=>el.parentElement.scrollLeft),0,'reverse Shift wheel returns to the left');
     console.log('PASS: legacy drawing, shapes, laser, recognition, lasso/resize, text, custom shortcuts, settings, hide/reopen, mouse/keyboard/touch, image import, PDF round trip, responsive layout');
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
