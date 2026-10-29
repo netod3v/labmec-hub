@@ -4401,6 +4401,21 @@ let noteSelectedIds=new Set(),noteSelectionClipboard=null,noteResizeDrag=null;
 let noteLassoPoints=[],noteHeldKeys=new Set(),notePanHeld=false;
 let noteRecognitionTimer=null,noteRecognitionLocked=false,noteForceLine=false;
 let noteLaserPoints=[],noteLaserFrame=null;
+const noteTouchPointers=new Map();
+let noteTouchGesture=null,noteTouchCheckpoint=null,noteGestureFrame=null,notePenPointer=null;
+function cancelNoteTouchDrawing(){
+  clearTimeout(noteRecognitionTimer);noteDrawing=false;noteDrawCurrent=null;notePanStart=null;noteResizeDrag=null;noteLassoPoints=[];
+  if(noteTouchCheckpoint){noteDrawObjects=cloneNoteObjects(noteTouchCheckpoint.state.objects);noteLegacyImage=noteTouchCheckpoint.legacy;}
+  noteEraseCanvas=null;noteDrawPendingHistory=null;clearNoteArea();setNoteSelection([]);renderNoteDrawing();
+}
+function noteTouchGeometry(){const [a,b]=[...noteTouchPointers.values()];if(!a||!b)return null;return {x:(a.x+b.x)/2,y:(a.y+b.y)/2,distance:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y))};}
+function updateNoteTouchGesture(){
+  noteGestureFrame=null;const current=noteTouchGeometry();if(!noteTouchGesture||!current)return;
+  const bounds=noteDrawViewport.getBoundingClientRect();
+  noteDrawZoom=Math.max(.25,Math.min(4,noteTouchGesture.zoom*current.distance/noteTouchGesture.distance));applyNoteDrawZoom();
+  noteDrawViewport.scrollLeft=noteTouchGesture.worldX*noteDrawZoom-(current.x-bounds.left);
+  noteDrawViewport.scrollTop=noteTouchGesture.worldY*noteDrawZoom-(current.y-bounds.top);renderNoteDrawing();
+}
 function noteSelection(){return noteDrawObjects.filter(o=>noteSelectedIds.has(o.id)||o.id===noteSelectedObjectId);}
 function noteSelectionBounds(objects=noteSelection()){
   if(!objects.length)return null;
@@ -4705,6 +4720,33 @@ noteTextColor.addEventListener('input',()=>runNoteCommand('foreColor',noteTextCo
 noteRichEditor.addEventListener('input',saveRichNote);
 const noteDocumentTools=initializeNoteDocumentTools({editor:noteRichEditor,toolbar:noteFormatBar,modal:noteStudioModal,getDocumentId:()=>currentUid+':'+getActiveTab()?.id,getTitle:()=>getActiveTab()?.title || 'Nota',save:saveRichNote,command:(name,value)=>{document.execCommand(name,false,value);saveRichNote();}});
 onAuthStateChanged(auth,()=>noteDocumentTools.closeDialog());
+noteDrawCanvas.addEventListener('pointerdown',event=>{
+  if(event.pointerType==='pen'){notePenPointer=event.pointerId;return;}
+  if(event.pointerType!=='touch')return;
+  if(notePenPointer!==null){event.preventDefault();event.stopImmediatePropagation();return;}
+  if(!noteTouchPointers.size)noteTouchCheckpoint={state:noteDrawingState(),legacy:noteLegacyImage};
+  noteTouchPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+  if(noteTouchPointers.size<2)return;
+  event.preventDefault();event.stopImmediatePropagation();noteDrawCanvas.setPointerCapture(event.pointerId);
+  if(!noteTouchGesture){cancelNoteTouchDrawing();const center=noteTouchGeometry(),bounds=noteDrawViewport.getBoundingClientRect();noteTouchGesture={distance:center.distance,zoom:noteDrawZoom,worldX:(noteDrawViewport.scrollLeft+center.x-bounds.left)/noteDrawZoom,worldY:(noteDrawViewport.scrollTop+center.y-bounds.top)/noteDrawZoom};}
+},{capture:true});
+noteDrawCanvas.addEventListener('pointermove',event=>{
+  if(event.pointerType!=='touch')return;
+  if(notePenPointer!==null){event.preventDefault();event.stopImmediatePropagation();return;}
+  if(noteTouchPointers.has(event.pointerId))noteTouchPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+  if(!noteTouchGesture)return;event.preventDefault();event.stopImmediatePropagation();
+  if(!noteGestureFrame)noteGestureFrame=requestAnimationFrame(updateNoteTouchGesture);
+},{capture:true});
+for(const type of ['pointerup','pointercancel'])noteDrawCanvas.addEventListener(type,event=>{
+  if(event.pointerType==='pen'){notePenPointer=null;return;}
+  if(event.pointerType!=='touch')return;
+  if(!noteTouchPointers.has(event.pointerId)){event.preventDefault();event.stopImmediatePropagation();return;}
+  const gesturing=!!noteTouchGesture;
+  if(gesturing){if(noteGestureFrame)cancelAnimationFrame(noteGestureFrame);updateNoteTouchGesture();event.preventDefault();event.stopImmediatePropagation();}
+  else if(type==='pointercancel'&&noteTouchPointers.has(event.pointerId)){cancelNoteTouchDrawing();}
+  noteTouchPointers.delete(event.pointerId);
+  if(!noteTouchPointers.size){noteTouchGesture=null;noteTouchCheckpoint=null;}
+},{capture:true});
 noteDrawCanvas.addEventListener('pointerdown',e=>{
   if(e.button!==0||e.isPrimary===false)return;
   noteDrawCanvas.focus({preventScroll:true});

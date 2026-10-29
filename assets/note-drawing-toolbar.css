@@ -8,7 +8,7 @@
 .note-reference-toolbar .whiteboard-tool svg{width:18px;height:18px;}
 .note-reference-toolbar .whiteboard-tool:hover{background:var(--parchment);box-shadow:none;}
 .note-reference-toolbar .whiteboard-tool.active{color:var(--forest);border-color:var(--forest);background:color-mix(in srgb,var(--forest) 10%,var(--paper));box-shadow:none;}
-.note-reference-toolbar #note-draw-pen::after,.note-reference-toolbar .note-tool-group:first-child>.whiteboard-tool:nth-child(3)::after{content:'';position:absolute;right:4px;bottom:3px;width:6px;height:6px;border:1px solid var(--paper);border-radius:50%;background:var(--pen-color,var(--forest));box-shadow:0 0 0 1px var(--border);}
+.note-reference-toolbar [data-board-tool="pen"]::after,.note-reference-toolbar [data-board-tool="secondary"]::after,.note-reference-toolbar [data-board-tool="highlighter"]::after{content:'';position:absolute;right:4px;bottom:3px;width:6px;height:6px;border:1px solid var(--paper);border-radius:50%;background:var(--pen-color,var(--forest));box-shadow:0 0 0 1px var(--border);}
 .note-reference-toolbar .whiteboard-tool:disabled{opacity:.35;cursor:default;}
 .note-reference-toolbar .whiteboard-tool:focus-visible{outline:2px solid var(--forest);outline-offset:-2px;}
 .note-reference-toolbar #note-zoom-label{font:600 10px Inter,sans-serif;min-width:36px;text-align:center;color:var(--forest);}
@@ -122,3 +122,77 @@ html:is([data-theme="dark"],[data-theme="black"]) .note-reference-toolbar .note-
 .note-fullscreen-button.is-fullscreen .fullscreen-exit{display:block;}
 #note-studio-modal:fullscreen,#note-studio-modal.note-fullscreen{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;padding:0;background:var(--paper);}
 #note-studio-modal:fullscreen .note-studio-box,#note-studio-modal.note-fullscreen .note-studio-box{width:100%;height:100%;max-width:none;max-height:none;margin:0;border:0;border-radius:0;}
+
+/* Touch layouts keep drawing space and controls within the visible viewport. */
+#note-studio-modal .note-studio-body{overscroll-behavior:none;}
+.note-draw-viewport{overscroll-behavior:contain;touch-action:none;}
+.note-toolbar-strip{overscroll-behavior-x:contain;touch-action:pan-x;}
+.note-pen-popover,.note-drawing-more,.note-board-settings-content{overscroll-behavior:contain;}
+@media(max-width:1024px),(max-width:1366px) and (pointer:coarse){
+  #note-studio-modal{padding:0;}
+  #note-studio-modal .note-studio-box{width:100%;height:100dvh;max-height:100dvh;border-radius:0;border:0;}
+  #note-studio-modal .modal-head{flex:none;gap:8px;padding:10px max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left));}
+  #note-studio-modal .modal-head>div:first-child{min-width:0;flex:1;}
+  #note-studio-title{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #note-studio-modal .note-studio-head-actions{gap:5px;flex:none;}
+  #note-studio-modal .note-back-btn{min-width:44px;min-height:44px;padding:9px;}
+  #note-studio-modal .note-mode-btn{width:44px;height:44px;}
+  #note-studio-modal .note-mode-switch{padding:2px;gap:1px;}
+  #note-studio-modal .note-studio-body[data-mode="draw"] .note-draw-panel{min-height:0;border-radius:0;border:0;}
+  .note-reference-toolbar{bottom:max(10px,env(safe-area-inset-bottom));max-width:calc(100% - 16px);padding:5px;gap:2px;}
+  .note-reference-toolbar .whiteboard-tool{width:44px;height:44px;}
+  .note-toolbar-grip{width:24px;height:44px;margin-right:0;}
+  .note-toolbar-strip{gap:4px;}
+  .note-tool-group{gap:2px;padding-right:4px;}
+  .note-reference-toolbar .note-tool-group:last-child{padding-left:3px;}
+  .note-pen-popover{width:340px;max-width:calc(100vw - 32px);}
+  .note-color-palette{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));justify-items:center;gap:4px;padding-bottom:8px;}
+  .note-color-swatch{position:relative;width:44px;height:44px;border:0;background:transparent;}
+  .note-color-swatch::before{content:'';position:absolute;inset:7px;border:1px solid #bac8d8;border-radius:50%;background:var(--swatch);}
+  .note-color-palette .whiteboard-color{width:44px;height:44px;padding:5px;}
+  .note-weight-control{font-size:12px;min-height:48px;}
+  .note-weight-control input[type="range"]{min-height:44px;touch-action:pan-x;}
+  .note-weight-control output{font-size:12px;min-width:36px;}
+  .note-line-options button,.note-eraser-options button{min-height:44px;}
+  .note-drawing-more{width:280px;}
+  .note-drawing-more .whiteboard-tool{width:100%;min-height:48px;height:auto;}
+  .note-drawing-more .whiteboard-tool span{font-size:13px;}
+  .note-pen-popover.note-shape-palette{width:280px;}
+  .note-area-tools{left:8px;top:8px;max-width:calc(100% - 16px);gap:5px;}
+  .note-area-tools button{min-height:44px;}
+  .note-toolbar-reopen{bottom:max(12px,env(safe-area-inset-bottom));left:max(12px,env(safe-area-inset-left));min-height:44px;}
+  .note-board-settings-heading>button,.note-board-settings-footer button,.note-board-settings-tabs button{min-height:44px;}
+  .note-board-settings form{max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));}
+}
+@media(max-width:520px){
+  #note-studio-modal .note-back-btn span{display:none;}
+  #note-studio-modal .modal-head strong{font-size:13px;}
+  #note-studio-title{font-size:11px;max-width:110px;}
+  #note-studio-modal .note-studio-head-actions{gap:3px;}
+  .note-reference-toolbar #note-zoom-label{min-width:32px;}
+}
+@media(max-height:500px) and (max-width:1024px){
+  #note-studio-modal .modal-head{padding-top:4px;padding-bottom:4px;}
+  .note-board-settings-heading{padding-top:10px;padding-bottom:6px;}.note-board-settings-heading p{display:none;}
+  .note-board-settings-content{padding-bottom:10px;}.note-board-settings-footer{padding-top:6px;padding-bottom:6px;}
+}
+
+@media(max-width:1024px),(max-width:1366px) and (pointer:coarse){#note-studio-modal .note-studio-body[data-mode="draw"]{padding:0;overflow:hidden;}#note-studio-modal .modal-head{padding-top:calc(10px + env(safe-area-inset-top));}}
+
+@media(max-width:1024px),(max-width:1366px) and (pointer:coarse){
+  #note-studio-modal .note-document-heading{flex-direction:column;align-items:flex-start;gap:0;}
+  #note-studio-modal .note-document-heading strong{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #note-studio-modal .note-header-save{display:none;}
+}
+@media(min-width:600px) and (max-width:1024px) and (max-height:500px){
+  .note-pen-popover{width:420px;}.note-pen-popover.note-shape-palette{width:400px;}
+  .note-color-palette{grid-template-columns:repeat(8,minmax(0,1fr));padding-bottom:4px;}
+  .note-weight-control{min-height:44px;padding:0;}.note-opacity-control{margin-top:0;padding-top:0;}
+}
+
+@media(max-width:1024px),(max-width:1366px) and (pointer:coarse){
+  .note-recognition-types .note-board-check,.note-board-shortcut button{min-height:44px;}
+  .note-background-colors input{min-height:44px;}
+  .note-board-dialog textarea{font-size:16px;}
+  .note-board-dialog:not(.note-board-settings) button{min-height:44px;}
+}

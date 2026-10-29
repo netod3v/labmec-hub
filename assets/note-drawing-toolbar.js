@@ -118,10 +118,23 @@ export function initializeDrawingToolbar(options) {
   const moreMenu=document.createElement('div');moreMenu.className='note-drawing-more';moreMenu.id='note-drawing-more';moreMenu.hidden=true;moreMenu.setAttribute('role','group');moreMenu.setAttribute('aria-label','Mais ferramentas de desenho');
   const moreButton=button(files,'Mais ferramentas','M12 5v14M5 12h14',()=>{popup.hidden=true;pen.setAttribute('aria-expanded','false');moreMenu.hidden=!moreMenu.hidden;moreButton.setAttribute('aria-expanded',String(!moreMenu.hidden));if(!moreMenu.hidden)queueMicrotask(()=>moreMenu.querySelector('button:not([hidden]):not(:disabled)')?.focus());});
   moreButton.setAttribute('aria-expanded','false');moreButton.setAttribute('aria-controls',moreMenu.id);
+  finish.prepend(moreButton);
   for(const id of ['line','area','crop','redo','download','image','importPdf']){
     const item=strip.querySelector('[data-board-tool="'+id+'"]');
     if(!item)continue;const label=document.createElement('span');label.textContent=item.title;item.append(label);moreMenu.append(item);
   }
+  const compactItems=[];
+  for(const id of ['secondary','laser','rect','ellipse','triangle','cube','cylinder','pyramid','sphere','stamp','lasso','clear','pdf','text']){
+    const item=strip.querySelector('[data-board-tool="'+id+'"]');if(!item)continue;
+    const anchor=document.createComment('tool '+id);item.before(anchor);
+    const label=document.createElement('span');label.textContent=item.title;compactItems.push({item,anchor,label});
+  }
+  const compactMedia=matchMedia('(max-width:1024px), (max-width:1366px) and (pointer:coarse)');
+  function updateCompactTools(){
+    for(const {item,anchor,label}of compactItems){if(compactMedia.matches){item.append(label);moreMenu.append(item);}else{label.remove();anchor.after(item);}}
+    refresh();queueMicrotask(fitPopovers);
+  }
+  compactMedia.addEventListener('change',updateCompactTools);
   const closeMore=()=>{moreMenu.hidden=true;moreButton.setAttribute('aria-expanded','false');};
   moreMenu.addEventListener('click',event=>{if(event.target.closest('button'))closeMore();});
   toolbar.addEventListener('click',event=>{if(!moreButton.contains(event.target)&&!moreMenu.contains(event.target))closeMore();});
@@ -195,5 +208,5 @@ export function initializeDrawingToolbar(options) {
   panel.addEventListener('pointerdown',event=>{if(!toolbar.contains(event.target)){popup.hidden=true;closeMore();pen.setAttribute('aria-expanded','false');}});
   toolbar.addEventListener('keydown',event=>{if(event.key==='Escape'&&!moreMenu.hidden){event.stopPropagation();closeMore();moreButton.focus();}else if(event.key==='Escape'&&!popup.hidden){event.stopPropagation();popup.hidden=true;pen.setAttribute('aria-expanded','false');pen.focus();}});
   color.addEventListener('input',()=>{if(editingSwatch){editingSwatch[1]=color.value;editingSwatch[0].style.setProperty('--swatch',color.value);options.setPalette?.(swatches.map(entry=>entry[1]));editingSwatch=null;}refresh();});size.addEventListener('change',refresh);
-  refresh();return {refresh};
+  updateCompactTools();return {refresh};
 }

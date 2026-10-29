@@ -60,3 +60,13 @@ do navegador em `EDGE_EXECUTABLE`. Usa conta, desenhos e arquivos fictícios,
 sem acessar dados de produção. Cobre regressões do desenho, reconhecimento,
 seleção/redimensionamento, atalhos e preferências, arquivos e CSP, além dos
 layouts de desktop, tablet e celular.
+
+
+## Celular e tablet
+
+- O editor ocupa a janela em telas de até 1024 px e em tablets de toque de até 1366 px, com controles de toque de pelo menos 44 px.
+- As ferramentas principais ficam na barra; formas, laser e outras ferramentas ficam acessíveis pelo botão **+**.
+- Um dedo desenha. Dois dedos movem o quadro e o gesto de pinça ajusta o zoom sem gerar traços.
+- Ao usar uma caneta digital, toques simultâneos no quadro são ignorados durante o traço.
+- Os painéis se ajustam à orientação e respeitam os limites do quadro. A barra continua podendo ser arrastada ou recolhida.
+- A validação automatizada usa emulação Chromium em 320×568, 390×844, 768×1024, 1024×768, 1366×1024 e 844×390, incluindo gestos de toque. Isso não substitui a verificação em aparelhos reais.

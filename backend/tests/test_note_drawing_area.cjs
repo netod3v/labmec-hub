@@ -8,6 +8,7 @@ const source = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const geometry = fs.readFileSync(path.join(root, 'assets/note-drawing-area.js'), 'utf8').replace(/export /g, '');
 const modelSource = fs.readFileSync(path.join(root, 'assets/note-whiteboard-model.js'), 'utf8').replace(/export /g, '');
 const toolbarSource = fs.readFileSync(path.join(root, 'assets/note-drawing-toolbar.js'), 'utf8').replace(/export /g, '');
+const documentCSS=fs.readFileSync(path.join(root,'assets/note-document.css'),'utf8');
 const toolbarCSS = fs.readFileSync(path.join(root, 'assets/note-drawing-toolbar.css'), 'utf8');
 const applicationCSS = [...source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(match=>match[1]).join('\n');
 const core = source.slice(source.indexOf('let noteSavedRange = null;'), source.indexOf('function renderNoteStudio(){'));
@@ -50,6 +51,15 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
       const code=geometry+'\n'+modelSource+'\n'+toolbarSource+'\n'+core+'\n'+handlers+`
         window.drawingTest={
           seed(){noteShapeTool.value='none';noteInkType.value='pen';noteLineStyle='solid';noteDrawCanvas.width=1400;noteDrawCanvas.height=760;noteDrawObjects=[{id:'line',type:'stroke',points:[{x:0,y:50},{x:150,y:50}],width:6,color:'#ff0000'}];noteLegacyImage=null;noteSelectedObjectId=null;clearNoteArea();noteSelectedIds.clear();noteSelectedObjectId=null;noteLassoPoints=[];noteLaserPoints=[];noteResizeDrag=null;noteBoardSettings=defaultWhiteboardSettings();noteDrawHistory.clear();noteDrawRedoHistory.clear();noteDrawPendingHistory=null;noteDrawZoom=1;applyNoteDrawZoom();renderNoteDrawing();},
+          mountResponsiveEditor(source){
+            const parsed=new DOMParser().parseFromString(source,'text/html'),modal=parsed.getElementById('note-studio-modal');modal.classList.remove('hidden');modal.classList.add('modal-visible');
+            const head=modal.querySelector('.modal-head');head.firstElementChild.classList.add('note-document-heading');head.prepend(modal.querySelector('#note-studio-close'));modal.querySelector('#note-mode-text').classList.remove('active');modal.querySelector('#note-mode-draw').classList.add('active');
+            const panel=document.querySelector('.note-reference-toolbar').closest('.note-draw-panel');noteDrawViewport=document.createElement('div');noteDrawViewport.id='note-draw-viewport';noteDrawViewport.className='note-draw-viewport';noteDrawViewport.append(noteDrawCanvas);for(const old of document.querySelectorAll('#note-draw-viewport'))old.remove();panel.prepend(noteDrawViewport);
+            modal.querySelector('.note-draw-panel').replaceWith(panel);modal.querySelector('.note-studio-body').dataset.mode='draw';document.body.append(modal);
+            document.getElementById('note-studio-title').textContent='Uma nota com titulo bastante longo para testar o tamanho';
+            for(const id of ['pen','eraser','pan','select','undo','clear']){const button=panel.querySelector('[data-board-tool="'+id+'"]'),temp=document.createElement('div');temp.innerHTML=whiteboardToolIcon(id);button?.querySelector('svg')?.replaceWith(temp.firstElementChild);}
+            noteDrawZoom=1;applyNoteDrawZoom();renderNoteDrawing();
+          },
           fitViewport(width,height,zoom){
             const viewport=document.createElement('div');viewport.id='note-draw-viewport';viewport.style.cssText='position:fixed;left:0;top:0;width:'+width+'px;height:'+height+'px;overflow:auto';
             document.body.append(viewport);viewport.append(noteDrawCanvas);noteDrawViewport=viewport;noteDrawZoom=zoom;applyNoteDrawZoom();renderNoteDrawing();
@@ -488,6 +498,53 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     assert.ok(await run(()=>Array.from({length:100},(_,i)=>drawingTest.pixel(100,170+i)[3]).every(alpha=>alpha>0)),'visible cube edge stays continuous');
     const solidPreview=await run(()=>{const c=document.createElement('canvas');c.width=900;c.height=700;c.getContext('2d').drawImage(drawingTest.exportCanvas(),0,0);return c.toDataURL().split(',')[1];});
     fs.writeFileSync(path.join(process.env.TEMP||'/tmp','labmec-solid-shapes.png'),Buffer.from(solidPreview,'base64'));
+    await page.addStyleTag({content:documentCSS+'\n'+toolbarCSS});
+    await page.evaluate(source=>drawingTest.mountResponsiveEditor(source),source);
+    for(const [width,height] of [[320,568],[390,844],[768,1024],[1024,768],[1366,1024],[844,390]]){
+      await page.setViewportSize({width,height});await page.waitForTimeout(100);
+      const modal=await page.locator('#note-studio-modal .note-studio-box').boundingBox();
+      assert.ok(modal.x>=-1&&modal.y>=-1&&modal.width<=width+1&&modal.height<=height+1,'editor fits mobile/tablet '+width+'x'+height);
+      const board=await page.locator('.note-draw-panel').boundingBox();assert.ok(board.height>=height*.5,'drawing retains most of the screen');
+      assert.ok(await page.locator('#note-studio-modal .modal-head').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'header fits narrow screens');
+      const penBounds=await page.locator('[data-board-tool="pen"]').boundingBox();assert.ok(penBounds.width>=44&&penBounds.height>=44,'drawing tools have finger-sized targets');
+      await page.click('[aria-label="Mais ferramentas"]');
+      assert.equal(await page.locator('.note-drawing-more [data-board-tool="sphere"]').isVisible(),true,'extra shapes stay reachable from the persistent menu');
+      let menu=await page.locator('.note-drawing-more').boundingBox();assert.ok(menu.x>=board.x-1&&menu.x+menu.width<=board.x+board.width+1&&menu.y>=board.y-1&&menu.y+menu.height<=board.y+board.height+1,'menu stays inside the board');
+      await page.keyboard.press('Escape');await page.click('[data-board-tool="highlighter"]');
+      const palette=await page.locator('.note-pen-popover').boundingBox();assert.ok(palette.x>=board.x-1&&palette.x+palette.width<=board.x+board.width+1&&palette.y>=board.y-1&&palette.y+palette.height<=board.y+board.height+1,'touch palette fits visible board');
+      await page.screenshot({path:path.join(process.env.TEMP||'/tmp','labmec-responsive-'+width+'x'+height+'.png')});
+      await page.keyboard.press('Escape');
+    }
+    await page.setViewportSize({width:390,height:844});await page.waitForTimeout(80);
+    await run(()=>{drawingTest.seed();drawingTest.choosePen('pen');});
+    const touchBoard=await page.locator('.note-draw-panel').boundingBox(),tx=touchBoard.x+150,ty=touchBoard.y+180;
+    const beforePinch=await run(()=>drawingTest.state());
+    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:1,x:tx-35,y:ty},{id:2,x:tx+35,y:ty}]});
+    await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{id:1,x:tx-70,y:ty},{id:2,x:tx+70,y:ty}]});await page.waitForTimeout(80);
+    await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    assert.ok((await run(()=>drawingTest.state())).zoom>beforePinch.zoom,'two-finger pinch zooms the board');
+    assert.equal((await run(()=>drawingTest.state())).objects,beforePinch.objects,'pinch creates no stray ink');
+    const beforeTouchPan=await page.locator('#note-draw-viewport').evaluate(el=>({left:el.scrollLeft,top:el.scrollTop}));
+    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:1,x:tx-35,y:ty},{id:2,x:tx+35,y:ty}]});
+    await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{id:1,x:tx-65,y:ty-45},{id:2,x:tx+5,y:ty-45}]});await page.waitForTimeout(80);
+    await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    assert.ok(await page.locator('#note-draw-viewport').evaluate((el,before)=>el.scrollTop>before.top&&el.scrollLeft>before.left,beforeTouchPan),'two fingers pan vertically and horizontally');
+    assert.equal((await run(()=>drawingTest.state())).objects,beforePinch.objects,'two-finger pan creates no stray ink');
+    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:1,x:tx,y:ty}]});
+    await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{id:1,x:tx+40,y:ty+25}]});
+    await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    assert.equal((await run(()=>drawingTest.state())).objects,beforePinch.objects+1,'one finger still draws after gestures');
+    const beforePen=await run(()=>drawingTest.state().objects);
+    await touch.send('Input.dispatchMouseEvent',{type:'mousePressed',x:tx,y:ty+70,button:'left',buttons:1,clickCount:1,pointerType:'pen',force:.5});
+    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:4,x:tx+60,y:ty+100}]});
+    await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await touch.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:tx+35,y:ty+90,buttons:1,pointerType:'pen',force:.5});
+    await touch.send('Input.dispatchMouseEvent',{type:'mouseReleased',x:tx+35,y:ty+90,button:'left',buttons:0,clickCount:1,pointerType:'pen'});
+    assert.equal((await run(()=>drawingTest.state())).objects,beforePen+1,'a simultaneous palm touch adds no extra drawing');
+    const penStroke=(await run(()=>drawingTest.objects())).at(-1);
+    assert.ok(penStroke.points?.length>1||Math.abs(penStroke.x2-penStroke.x1)>1,'lifting the palm does not interrupt the pen stroke');
+
+    await page.setViewportSize({width:1600,height:1100});
     await page.setContent('<div id="note-studio-modal" class="modal-overlay modal-visible"><div class="modal-box note-studio-box"><button id="fullscreen-test" type="button">Tela cheia</button></div></div>');
     await page.addStyleTag({content:applicationCSS+'\n'+toolbarCSS});
     await page.evaluate(async()=>{const {initializeNoteFullscreen}=await import('/assets/note-fullscreen.js');initializeNoteFullscreen({modal:document.getElementById('note-studio-modal'),button:document.getElementById('fullscreen-test')});});
