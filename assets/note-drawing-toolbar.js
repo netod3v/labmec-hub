@@ -82,13 +82,24 @@ export function initializeDrawingToolbar(options) {
     input.onchange=async()=>{const file=input.files?.[0];if(!file)return;item.disabled=true;try{await options.importFile?.(file);}finally{input.value='';item.disabled=false;}};
   }
   const finish=group();button(finish,'Configurações do quadro',icons.settings,()=>options.settings?.());
+  const moreMenu=document.createElement('div');moreMenu.className='note-drawing-more';moreMenu.id='note-drawing-more';moreMenu.hidden=true;moreMenu.setAttribute('role','group');moreMenu.setAttribute('aria-label','Mais ferramentas de desenho');
+  const moreButton=button(files,'Mais ferramentas','M12 5v14M5 12h14',()=>{popup.hidden=true;pen.setAttribute('aria-expanded','false');moreMenu.hidden=!moreMenu.hidden;moreButton.setAttribute('aria-expanded',String(!moreMenu.hidden));if(!moreMenu.hidden)queueMicrotask(()=>moreMenu.querySelector('button:not([hidden]):not(:disabled)')?.focus());});
+  moreButton.setAttribute('aria-expanded','false');moreButton.setAttribute('aria-controls',moreMenu.id);
+  for(const id of ['line','area','crop','redo','download','image','importPdf']){
+    const item=strip.querySelector('[data-board-tool="'+id+'"]');
+    if(!item)continue;const label=document.createElement('span');label.textContent=item.title;item.append(label);moreMenu.append(item);
+  }
+  const closeMore=()=>{moreMenu.hidden=true;moreButton.setAttribute('aria-expanded','false');};
+  moreMenu.addEventListener('click',event=>{if(event.target.closest('button'))closeMore();});
+  toolbar.addEventListener('click',event=>{if(!moreButton.contains(event.target)&&!moreMenu.contains(event.target))closeMore();});
   const reopen=document.createElement('button');reopen.type='button';reopen.className='note-toolbar-reopen';reopen.textContent='Ferramentas de desenho';reopen.hidden=true;reopen.onclick=()=>{toolbar.hidden=false;areaTools.hidden=false;reopen.hidden=true;refresh();};panel.append(reopen);
-  button(finish,'Recolher ferramentas','M6 6l12 12M18 6 6 18',()=>{popup.hidden=true;toolbar.hidden=true;areaTools.hidden=true;reopen.hidden=false;close?.();});
-  toolbar.replaceChildren(popup,strip,native);
+  button(finish,'Recolher ferramentas','M6 6l12 12M18 6 6 18',()=>{popup.hidden=true;closeMore();toolbar.hidden=true;areaTools.hidden=true;reopen.hidden=false;close?.();});
+  toolbar.replaceChildren(popup,moreMenu,strip,native);
   function refresh(){
     const state=getState();
     const hidden=new Set(state.preferences?.hiddenTools||[]);
-    for(const item of strip.querySelectorAll('[data-board-tool]'))item.hidden=hidden.has(item.dataset.boardTool);
+    for(const item of toolbar.querySelectorAll('[data-board-tool]'))item.hidden=hidden.has(item.dataset.boardTool);
+    moreButton.hidden=[...moreMenu.children].every(child=>child.hidden);
     for(const group of strip.children){if(!group.dataset.boardTool)group.hidden=[...group.children].every(child=>child.hidden);}
     pen.classList.toggle('active',state.tool==='pen'&&shape.value==='none'&&ink.value==='pen');
     pencil.classList.toggle('active',state.tool==='pen'&&shape.value==='none'&&ink.value==='pencil');
@@ -102,10 +113,10 @@ export function initializeDrawingToolbar(options) {
     range.value=size.value;output.value=size.value+' px';
     pen.style.setProperty('--pen-color',state.preferences?.pens?.pen?.color||color.value);pencil.style.setProperty('--pen-color',state.preferences?.pens?.secondary?.color||color.value);marker.style.setProperty('--pen-color',state.preferences?.pens?.highlighter?.color||color.value);
     areaTools.dataset.visible=String(state.tool==='area'||state.tool==='crop'||state.hasArea);
-    for(const item of strip.querySelectorAll('.whiteboard-tool'))item.setAttribute('aria-pressed',String(item.classList.contains('active')));
+    for(const item of toolbar.querySelectorAll('.whiteboard-tool'))item.setAttribute('aria-pressed',String(item.classList.contains('active')));
   }
-  panel.addEventListener('pointerdown',event=>{if(!toolbar.contains(event.target)){popup.hidden=true;pen.setAttribute('aria-expanded','false');}});
-  toolbar.addEventListener('keydown',event=>{if(event.key==='Escape'&&!popup.hidden){event.stopPropagation();popup.hidden=true;pen.setAttribute('aria-expanded','false');pen.focus();}});
+  panel.addEventListener('pointerdown',event=>{if(!toolbar.contains(event.target)){popup.hidden=true;closeMore();pen.setAttribute('aria-expanded','false');}});
+  toolbar.addEventListener('keydown',event=>{if(event.key==='Escape'&&!moreMenu.hidden){event.stopPropagation();closeMore();moreButton.focus();}else if(event.key==='Escape'&&!popup.hidden){event.stopPropagation();popup.hidden=true;pen.setAttribute('aria-expanded','false');pen.focus();}});
   color.addEventListener('input',()=>{if(editingSwatch){editingSwatch[1]=color.value;editingSwatch[0].style.setProperty('--swatch',color.value);options.setPalette?.(swatches.map(entry=>entry[1]));editingSwatch=null;}refresh();});size.addEventListener('change',refresh);
   refresh();return {refresh};
 }

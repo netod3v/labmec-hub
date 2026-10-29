@@ -190,6 +190,15 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     });
     assert.deepEqual(native,{textPrevented:false,textModePrevented:false,hiddenPrevented:false});
     await run(()=>{drawingTest.seed();drawingTest.initializeBar();});
+    assert.equal(await page.locator('.note-toolbar-strip [data-board-tool="crop"]').count(),0,'crop is kept out of the compact primary toolbar');
+    assert.equal(await page.locator('.note-drawing-more').isVisible(),false);
+    await page.click('[aria-label="Mais ferramentas"]');
+    assert.equal(await page.locator('.note-drawing-more').isVisible(),true);
+    await page.click('[aria-label="Recortar bordas"]');
+    assert.equal((await run(()=>drawingTest.toolState())).tool,'crop');
+    assert.equal(await page.locator('.note-drawing-more').isVisible(),false,'choosing a tool closes the extra menu');
+    await page.click('[aria-label="Mais ferramentas"]');await page.keyboard.press('Escape');
+    assert.equal(await page.locator('.note-drawing-more').isVisible(),false,'Escape closes the extra menu');
     await page.click('[aria-label="Caneta 2"]');
     assert.equal((await run(()=>drawingTest.toolState())).ink,'pencil');
     await page.click('#note-draw-pen');
