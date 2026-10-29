@@ -3463,6 +3463,9 @@ import { editContactNickname } from './assets/contact-nickname.js';
 import { initializeMessageMenu, animateMessageRemoval } from './assets/message-menu.js';
 import { postMatchesMediaType, attachmentMatchesType } from './assets/mural-media-filter.js';
 import { initializeNoteDocumentTools, sanitizeNoteHtml } from './assets/note-document.js';
+import { defaultWhiteboardSettings, normalizeWhiteboardSettings, whiteboardKey, pointInLasso, boundsOfPoints, recognizedInk, drawWhiteboardBackground, drawWhiteboardSolid, resizeWhiteboardObjects } from './assets/note-whiteboard-model.js';
+import { openWhiteboardSettings } from './assets/note-whiteboard-settings.js';
+import { downloadWhiteboard, canvasPDF, loadWhiteboardPDF, loadWhiteboardImage } from './assets/note-whiteboard-files.js';
 import { initializeDrawingToolbar } from './assets/note-drawing-toolbar.js';
 import { drawingRect, containsDrawingPoint, drawingSize, drawingShortcut } from './assets/note-drawing-area.js';
 import { initializeCompactNoteEditor } from './assets/note-compact-editor.js';
@@ -4389,6 +4392,79 @@ let noteAreaRect = null, noteAreaStart = null, noteAreaMoving = false;
 let noteAreaClipboard = null;
 let noteEraseCanvas = null;
 const noteBitmapCache = new Map();
+let noteBoardSettings=defaultWhiteboardSettings();
+let noteSaveBoardPreferences=()=>{};
+let noteSelectedIds=new Set(),noteSelectionClipboard=null,noteResizeDrag=null;
+let noteLassoPoints=[],noteHeldKeys=new Set(),notePanHeld=false;
+let noteRecognitionTimer=null,noteRecognitionLocked=false,noteForceLine=false;
+let noteLaserPoints=[],noteLaserFrame=null;
+function noteSelection(){return noteDrawObjects.filter(o=>noteSelectedIds.has(o.id)||o.id===noteSelectedObjectId);}
+function noteSelectionBounds(objects=noteSelection()){
+  if(!objects.length)return null;
+  const bounds=objects.map(noteObjectBounds);return {x1:Math.min(...bounds.map(b=>b.x1)),y1:Math.min(...bounds.map(b=>b.y1)),x2:Math.max(...bounds.map(b=>b.x2)),y2:Math.max(...bounds.map(b=>b.y2))};
+}
+function setNoteSelection(ids){noteSelectedIds=new Set(ids);noteSelectedObjectId=ids[0]||null;updateNoteAreaTools();renderNoteDrawing();}
+function noteResizeHandles(bounds){return bounds?[['nw',bounds.x1,bounds.y1],['ne',bounds.x2,bounds.y1],['sw',bounds.x1,bounds.y2],['se',bounds.x2,bounds.y2]]:[];}
+function noteResizeHandle(point){return noteResizeHandles(noteSelectionBounds()).find(([,x,y])=>Math.hypot(point.x-x,point.y-y)<=11/noteDrawZoom);}
+function paintNoteSelection(ctx){
+  const bounds=noteSelectionBounds();
+  if(bounds&&!noteAreaRect){ctx.save();ctx.strokeStyle='#2563eb';ctx.fillStyle='#fff';ctx.lineWidth=1.5/noteDrawZoom;ctx.setLineDash([6/noteDrawZoom,4/noteDrawZoom]);ctx.strokeRect(bounds.x1,bounds.y1,bounds.x2-bounds.x1,bounds.y2-bounds.y1);ctx.setLineDash([]);const r=5/noteDrawZoom;for(const [,x,y]of noteResizeHandles(bounds)){ctx.fillRect(x-r,y-r,r*2,r*2);ctx.strokeRect(x-r,y-r,r*2,r*2);}ctx.restore();}
+  if(noteLassoPoints.length){ctx.save();ctx.strokeStyle='#2563eb';ctx.lineWidth=1.5/noteDrawZoom;ctx.setLineDash([5/noteDrawZoom,4/noteDrawZoom]);ctx.beginPath();noteLassoPoints.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.stroke();ctx.restore();}
+}
+function noteResizeSelection(point){
+  const {handle,bounds,objects}=noteResizeDrag,next={...bounds},min=8/noteDrawZoom;
+  if(handle.includes('w'))next.x1=Math.min(point.x,bounds.x2-min);else next.x2=Math.max(point.x,bounds.x1+min);
+  if(handle.includes('n'))next.y1=Math.min(point.y,bounds.y2-min);else next.y2=Math.max(point.y,bounds.y1+min);
+  const transformed=resizeWhiteboardObjects(objects,bounds,next),map=new Map(transformed.map(o=>[o.id,o]));noteDrawObjects=noteDrawObjects.map(o=>map.get(o.id)||o);
+}
+function noteSelectedByLasso(points){return noteDrawObjects.filter(o=>{const b=noteObjectBounds(o),vertices=o.type==='stroke'?o.points:[{x:b.x1,y:b.y1},{x:b.x2,y:b.y1},{x:b.x2,y:b.y2},{x:b.x1,y:b.y2}];return vertices.length&&vertices.every(p=>pointInLasso(p,points));}).map(o=>o.id);}
+function setNoteBoardPreferences(value){noteBoardSettings=normalizeWhiteboardSettings(value);noteSaveBoardPreferences(noteBoardSettings);if(noteDrawTool==='pen')chooseNotePen(notePenId(),false);noteDrawingToolbar?.refresh();renderNoteDrawing();}
+function notePenId(){return noteInkType.value==='pencil'?'secondary':noteInkType.value==='highlighter'?'highlighter':'pen';}
+function captureNotePen(){const id=notePenId();noteBoardSettings.pens[id]={color:noteDrawColor.value,width:Number(noteDrawSize.value),lineStyle:noteLineStyle};noteSaveBoardPreferences(noteBoardSettings);}
+function chooseNotePen(id,remember=true){
+  if(remember)captureNotePen();const preset=noteBoardSettings.pens[id];
+  noteInkType.value=id==='secondary'?'pencil':id==='highlighter'?'highlighter':'pen';noteDrawColor.value=preset.color;
+  if(![...noteDrawSize.options].some(o=>o.value===String(preset.width)))noteDrawSize.add(new Option(preset.width+' px',String(preset.width)));
+  noteDrawSize.value=String(preset.width);noteLineStyle=preset.lineStyle;noteShapeTool.value='none';selectNoteDrawTool('pen');
+}
+function noteModifierHeld(event,binding){return binding==='Control'?(event.ctrlKey||event.metaKey):binding==='Shift'?event.shiftKey:binding==='Alt'?event.altKey:noteHeldKeys.has(binding);}
+function armNoteRecognition(){
+  clearTimeout(noteRecognitionTimer);if(!noteBoardSettings.recognize||noteInkType.value==='highlighter')return;
+  noteRecognitionTimer=setTimeout(()=>{if(!noteDrawing||noteDrawTool!=='pen'||noteDrawCurrent?.type!=='stroke')return;const recognized=recognizedInk(noteDrawCurrent,noteBoardSettings.recognizeTypes);if(recognized){noteDrawCurrent=recognized;noteRecognitionLocked=true;renderNoteDrawing();}},500);
+}
+function addNoteLaser(point){noteLaserPoints.push({...point,time:performance.now()});if(!noteLaserFrame)noteLaserFrame=requestAnimationFrame(animateNoteLaser);}
+function animateNoteLaser(){noteLaserFrame=null;noteLaserPoints=noteLaserPoints.filter(p=>performance.now()-p.time<1000);renderNoteDrawing();if(noteLaserPoints.length)noteLaserFrame=requestAnimationFrame(animateNoteLaser);}
+function paintNoteLaser(ctx){if(!noteLaserPoints.length)return;ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#ff334d';ctx.fillStyle='#ff334d';ctx.lineWidth=4/noteDrawZoom;ctx.shadowColor='#ff334d';ctx.shadowBlur=10/noteDrawZoom;for(let i=1;i<noteLaserPoints.length;i++){ctx.globalAlpha=Math.max(0,1-(performance.now()-noteLaserPoints[i].time)/1000);ctx.beginPath();ctx.moveTo(noteLaserPoints[i-1].x,noteLaserPoints[i-1].y);ctx.lineTo(noteLaserPoints[i].x,noteLaserPoints[i].y);ctx.stroke();}const last=noteLaserPoints.at(-1);ctx.beginPath();ctx.arc(last.x,last.y,5/noteDrawZoom,0,Math.PI*2);ctx.fill();ctx.restore();}
+function zoomNoteAt(value,event){const previous=noteDrawZoom,box=noteDrawViewport.getBoundingClientRect(),x=event?event.clientX-box.left:box.width/2,y=event?event.clientY-box.top:box.height/2;noteDrawZoom=Math.max(.25,Math.min(4,value));applyNoteDrawZoom();noteDrawViewport.scrollLeft=(noteDrawViewport.scrollLeft+x)*noteDrawZoom/previous-x;noteDrawViewport.scrollTop=(noteDrawViewport.scrollTop+y)*noteDrawZoom/previous-y;renderNoteDrawing();}
+function noteObjectVertices(o){const b=noteObjectBounds(o);return [{x:b.x1,y:b.y1},{x:b.x2,y:b.y2}];}
+function deleteNoteSelection(){
+  if(noteAreaRect){noteAreaTools.querySelector('[data-area-action="delete"]').click();return;}
+  const selection=noteSelection();if(!selection.length)return;pushNoteDrawingHistory();const ids=new Set(selection.map(o=>o.id));noteDrawObjects=noteDrawObjects.filter(o=>!ids.has(o.id));noteSelectedIds.clear();noteSelectedObjectId=null;saveNoteDrawing();
+}
+function addNoteBitmap(canvas){
+  const image=noteBitmapObject(canvas);if(image.source.length>2500000)throw new Error('A imagem ficou muito grande. Reduza a resolução antes de inserir.');
+  const scale=Math.min(1,(noteDrawCanvas.width*.8)/canvas.width,(noteDrawCanvas.height*.8)/canvas.height),w=canvas.width*scale,h=canvas.height*scale;
+  image.x1=(noteDrawCanvas.width-w)/2;image.y1=(noteDrawCanvas.height-h)/2;image.x2=image.x1+w;image.y2=image.y1+h;
+  pushNoteDrawingHistory();noteDrawObjects.push(image);selectNoteDrawTool('select');setNoteSelection([image.id]);saveNoteDrawing();
+}
+function noteExportCanvas(){if(!noteDrawingReady())throw new Error('Aguarde o desenho terminar de carregar.');const canvas=document.createElement('canvas');canvas.width=noteDrawCanvas.width;canvas.height=noteDrawCanvas.height;const ctx=canvas.getContext('2d');drawWhiteboardBackground(ctx,canvas.width,canvas.height,noteBoardSettings);if(noteLegacyImage)ctx.drawImage(noteLegacyImage,0,0,canvas.width,canvas.height);noteDrawObjects.forEach(o=>drawNoteObject(ctx,o));return canvas;}
+function noteMessage(message){const dialog=document.createElement('dialog');dialog.className='note-board-dialog';const text=document.createElement('p');text.textContent=message;const button=document.createElement('button');button.textContent='Entendi';button.onclick=()=>dialog.close();dialog.append(text,button);noteStudioModal.append(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();}
+async function chooseNotePDFPage(count){if(count===1)return 1;return new Promise(resolve=>{const dialog=document.createElement('dialog');dialog.className='note-board-dialog';const form=document.createElement('form');form.method='dialog';const title=document.createElement('h2');title.textContent='Adicionar página do PDF';const label=document.createElement('label');label.textContent='Página (1 a '+count+')';const input=document.createElement('input');input.type='number';input.min='1';input.max=String(count);input.value='1';input.required=true;label.append(input);const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancelar';cancel.onclick=()=>dialog.close();const apply=document.createElement('button');apply.type='submit';apply.textContent='Adicionar página';form.append(title,label,cancel,apply);dialog.append(form);let number=null;form.onsubmit=e=>{e.preventDefault();number=Number(input.value);if(Number.isInteger(number)&&number>=1&&number<=count)dialog.close();};dialog.addEventListener('close',()=>{dialog.remove();resolve(number);},{once:true});noteStudioModal.append(dialog);dialog.showModal();});}
+function editNoteText(object=null,point=null){
+  const tabId=getActiveTab()?.id,dialog=document.createElement('dialog');dialog.className='note-board-dialog';
+  const form=document.createElement('form');form.method='dialog';const title=document.createElement('h2');title.textContent=object?'Editar texto':'Texto no quadro';
+  const input=document.createElement('textarea');input.maxLength=4000;input.rows=5;input.required=true;input.setAttribute('aria-label','Texto da caixa');input.value=object?.text||'';
+  const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancelar';cancel.onclick=()=>dialog.close();const apply=document.createElement('button');apply.type='submit';apply.textContent='Salvar texto';form.append(title,input,cancel,apply);dialog.append(form);
+  form.onsubmit=event=>{event.preventDefault();if(getActiveTab()?.id!==tabId||!input.value.trim()){dialog.close();return;}pushNoteDrawingHistory();
+    const ctx=noteDrawCanvas.getContext('2d');ctx.font='24px Inter, sans-serif';const lines=input.value.split('\n'),w=Math.min(noteDrawCanvas.width,Math.max(80,...lines.map(line=>ctx.measureText(line).width+12))),h=Math.min(noteDrawCanvas.height,Math.max(36,lines.length*32));
+    const x=object?.x1??Math.max(0,Math.min((point?.x??noteDrawCanvas.width/2)-w/2,noteDrawCanvas.width-w)),y=object?.y1??Math.max(0,Math.min((point?.y??noteDrawCanvas.height/2)-h/2,noteDrawCanvas.height-h));
+    const item={id:object?.id||'draw-'+crypto.randomUUID(),type:'text',text:input.value.slice(0,4000),color:object?.color||noteDrawColor.value,x1:x,y1:y,x2:x+w,y2:y+h};
+    if(object)noteDrawObjects=noteDrawObjects.map(o=>o.id===object.id?item:o);else noteDrawObjects.push(item);
+    selectNoteDrawTool('select');setNoteSelection([item.id]);saveNoteDrawing();dialog.close();
+  };
+  dialog.addEventListener('close',()=>dialog.remove(),{once:true});noteStudioModal.append(dialog);dialog.showModal();input.focus();return dialog;
+}
+
 function noteBitmap(source){
   if(typeof source!=='string'||!source.startsWith('data:image/png;base64,'))return null;
   if(!noteBitmapCache.has(source)){
@@ -4411,12 +4487,12 @@ function updateNoteAreaTools(){
   const id=getActiveTab()?.id;
   noteDrawUndo.disabled=!(noteDrawHistory.get(id)?.length);
   noteDrawRedo.disabled=!(noteDrawRedoHistory.get(id)?.length);
-  const valid=noteAreaRect&&noteAreaRect.width>=2&&noteAreaRect.height>=2&&noteDrawingReady();
-  noteAreaTools.querySelector('[data-area-action="crop"]').disabled=!valid;
+  const valid=((noteAreaRect&&noteAreaRect.width>=2&&noteAreaRect.height>=2)||noteSelection().length>0)&&noteDrawingReady();
+  noteAreaTools.querySelector('[data-area-action="crop"]').disabled=!(noteAreaRect&&noteAreaRect.width>=2&&noteAreaRect.height>=2&&noteDrawingReady());
   noteAreaTools.querySelector('[data-area-action="copy"]').disabled=!valid;
   noteAreaTools.querySelector('[data-area-action="delete"]').disabled=!valid;
-  noteAreaTools.querySelector('[data-area-action="cancel"]').disabled=!noteAreaRect;
-  noteAreaTools.querySelector('[data-area-action="paste"]').disabled=!noteAreaClipboard||!noteDrawingReady();
+  noteAreaTools.querySelector('[data-area-action="cancel"]').disabled=!noteAreaRect&&!noteSelection().length;
+  noteAreaTools.querySelector('[data-area-action="paste"]').disabled=(!noteAreaClipboard&&!noteSelectionClipboard)||!noteDrawingReady();
   noteAreaTools.querySelectorAll('[data-area-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.areaTool===noteDrawTool)));
 }
 function noteDrawingSnapshot(){
@@ -4447,7 +4523,7 @@ function restoreNoteDrawing(snapshot){
   noteDrawPendingHistory=null;
   noteDrawObjects=cloneNoteObjects(snapshot.objects);noteDrawCanvas.width=snapshot.width;noteDrawCanvas.height=snapshot.height;
   noteLegacyImage=null;if(snapshot.legacy){noteLegacyImage=new Image();noteLegacyImage.onload=()=>{renderNoteDrawing();updateNoteAreaTools();};noteLegacyImage.src=snapshot.legacy;}
-  noteSelectedObjectId=null;clearNoteArea();applyNoteDrawZoom();saveNoteDrawing();
+  noteSelectedIds.clear();noteSelectedObjectId=null;clearNoteArea();applyNoteDrawZoom();saveNoteDrawing();
 }
 function notePlainToHtml(text){ return escapeHtml(String(text||'')).replace(/\n/g,'<br>'); }
 function cloneNoteObjects(value){return JSON.parse(JSON.stringify(value||[]));}
@@ -4461,12 +4537,18 @@ function drawNoteObject(ctx,o){
     if(image&&(image instanceof HTMLCanvasElement||(image.complete&&image.naturalWidth>0)))ctx.drawImage(image,o.x1,o.y1,o.x2-o.x1,o.y2-o.y1);
     ctx.restore();return;
   }
+  if(o.type==='text'){
+    const lines=String(o.text||'').split('\n'),w=Math.abs(o.x2-o.x1),h=Math.abs(o.y2-o.y1),font=Math.max(1,h/(Math.max(1,lines.length)*1.35));
+    ctx.fillStyle=o.color||'#111827';ctx.font=font+'px Inter, sans-serif';ctx.textBaseline='top';lines.forEach((line,i)=>ctx.fillText(line,Math.min(o.x1,o.x2),Math.min(o.y1,o.y2)+i*font*1.35,w));ctx.restore();return;
+  }
   if(o.lineStyle==='dashed')ctx.setLineDash([ctx.lineWidth*3,ctx.lineWidth*2]);
+  if(o.lineStyle==='dotted')ctx.setLineDash([0,Math.max(4,ctx.lineWidth*2.5)]);
   ctx.beginPath();
-  if(o.type==='stroke'&&o.points?.length){ctx.moveTo(o.points[0].x,o.points[0].y);o.points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));}
+  if(o.type==='stroke'&&o.points?.length){ctx.moveTo(o.points[0].x,o.points[0].y);o.points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));if(o.points.length===1)ctx.lineTo(o.points[0].x+.01,o.points[0].y);}
   if(o.type==='line'){ctx.moveTo(o.x1,o.y1);ctx.lineTo(o.x2,o.y2);}
   if(o.type==='rect')ctx.rect(Math.min(o.x1,o.x2),Math.min(o.y1,o.y2),Math.abs(o.x2-o.x1),Math.abs(o.y2-o.y1));
   if(o.type==='ellipse'){const x=(o.x1+o.x2)/2,y=(o.y1+o.y2)/2;ctx.ellipse(x,y,Math.abs(o.x2-o.x1)/2,Math.abs(o.y2-o.y1)/2,0,0,Math.PI*2);}
+  drawWhiteboardSolid(ctx,o);
   ctx.stroke();
   if(o.lineStyle==='arrow'&&(o.type==='line'||o.type==='stroke')){
     const points=o.type==='stroke'?o.points:[{x:o.x1,y:o.y1},{x:o.x2,y:o.y2}];
@@ -4477,16 +4559,16 @@ function drawNoteObject(ctx,o){
   ctx.restore();
 }
 function noteObjectBounds(o){
-  if(o.type==='stroke'){const xs=o.points.map(p=>p.x),ys=o.points.map(p=>p.y);return{x1:Math.min(...xs),y1:Math.min(...ys),x2:Math.max(...xs),y2:Math.max(...ys)};}
+  if(o.type==='stroke')return boundsOfPoints(o.points);
   return{x1:Math.min(o.x1,o.x2),y1:Math.min(o.y1,o.y2),x2:Math.max(o.x1,o.x2),y2:Math.max(o.y1,o.y2)};
 }
 function renderNoteDrawing(){
   const ctx=noteDrawCanvas.getContext('2d');ctx.clearRect(0,0,noteDrawCanvas.width,noteDrawCanvas.height);
+  drawWhiteboardBackground(ctx,noteDrawCanvas.width,noteDrawCanvas.height,noteBoardSettings);
   if(noteLegacyImage?.complete)ctx.drawImage(noteLegacyImage,0,0,noteDrawCanvas.width,noteDrawCanvas.height);
   noteDrawObjects.forEach(o=>drawNoteObject(ctx,o));
   if(noteDrawCurrent)drawNoteObject(ctx,noteDrawCurrent);
-  const selected=noteDrawObjects.find(o=>o.id===noteSelectedObjectId);
-  if(selected&&!noteAreaRect){const b=noteObjectBounds(selected);ctx.save();ctx.strokeStyle='#2563eb';ctx.lineWidth=2;ctx.setLineDash([7,5]);ctx.strokeRect(b.x1-8,b.y1-8,b.x2-b.x1+16,b.y2-b.y1+16);ctx.restore();}
+  paintNoteSelection(ctx);paintNoteLaser(ctx);
   if(noteAreaRect){const r=noteAreaRect;ctx.save();ctx.strokeStyle='#2563eb';ctx.lineWidth=2/noteDrawZoom;ctx.setLineDash([7/noteDrawZoom,5/noteDrawZoom]);ctx.strokeRect(r.x,r.y,r.width,r.height);ctx.restore();}
 }
 function pushNoteDrawingHistory(){
@@ -4501,6 +4583,7 @@ function saveNoteDrawing(){if(noteEraseCanvas){noteDrawObjects=[noteBitmapObject
   tab.drawingObjects=cloneNoteObjects(noteDrawObjects);tab.drawingWidth=noteDrawCanvas.width;tab.drawingHeight=noteDrawCanvas.height;if(noteLegacyImage)tab.drawing=noteLegacyImage.src;else delete tab.drawing;saveNoteState();}renderNoteDrawing();updateNoteAreaTools();}
 function distanceToSegment(p,a,b){const l=(b.x-a.x)**2+(b.y-a.y)**2;if(!l)return Math.hypot(p.x-a.x,p.y-a.y);let t=((p.x-a.x)*(b.x-a.x)+(p.y-a.y)*(b.y-a.y))/l;t=Math.max(0,Math.min(1,t));return Math.hypot(p.x-(a.x+t*(b.x-a.x)),p.y-(a.y+t*(b.y-a.y)));}
 function hitNoteObject(o,p,r=12){
+  if(o.type==='stroke'&&o.points.length===1)return Math.hypot(p.x-o.points[0].x,p.y-o.points[0].y)<r+(o.width||5)/2;
   if(o.type==='stroke')return o.points.some((q,i)=>i&&distanceToSegment(p,o.points[i-1],q)<r+(o.width||5)/2);
   if(o.type==='line')return distanceToSegment(p,{x:o.x1,y:o.y1},{x:o.x2,y:o.y2})<r+(o.width||5)/2;
   const b=noteObjectBounds(o);return p.x>=b.x1-r&&p.x<=b.x2+r&&p.y>=b.y1-r&&p.y<=b.y2+r;
@@ -4525,6 +4608,7 @@ function applyNoteDrawZoom(){
 function renderNoteStudio(){
   const tab = getActiveTab();
   if(!tab) return;
+  noteBoardSettings=normalizeWhiteboardSettings(noteState.whiteboardPreferences);noteSelectedIds.clear();noteSelectionClipboard=null;noteLassoPoints=[];noteLaserPoints=[];noteHeldKeys.clear();notePanHeld=false;
   noteDrawCanvas.width=drawingSize(tab.drawingWidth)||1400;
   noteDrawCanvas.height=drawingSize(tab.drawingHeight)||760;
   noteDrawPendingHistory=null;clearNoteArea();noteAreaClipboard=null;noteBitmapCache.clear();updateNoteAreaTools();
@@ -4534,7 +4618,7 @@ function renderNoteStudio(){
   noteStudioTitle.textContent = tab.title || 'Nota atual';
   noteSavedRange=null;
   noteRichEditor.innerHTML = sanitizeNoteHtml(tab.richContent || notePlainToHtml(tab.content));
-  applyNoteDrawZoom();requestAnimationFrame(()=>{renderNoteDrawing();updateNoteAreaTools();});
+  chooseNotePen('pen',false);applyNoteDrawZoom();requestAnimationFrame(()=>{renderNoteDrawing();updateNoteAreaTools();});
 }
 function setNoteStudioMode(mode){
   const drawingMode = mode === 'draw';
@@ -4596,60 +4680,93 @@ noteRichEditor.addEventListener('input',saveRichNote);
 const noteDocumentTools=initializeNoteDocumentTools({editor:noteRichEditor,toolbar:noteFormatBar,modal:noteStudioModal,getDocumentId:()=>currentUid+':'+getActiveTab()?.id,getTitle:()=>getActiveTab()?.title || 'Nota',save:saveRichNote,command:(name,value)=>{document.execCommand(name,false,value);saveRichNote();}});
 onAuthStateChanged(auth,()=>noteDocumentTools.closeDialog());
 noteDrawCanvas.addEventListener('pointerdown',e=>{
+  if(e.button!==0||e.isPrimary===false)return;
   noteDrawCanvas.focus({preventScroll:true});
   const p=notePoint(e);noteDrawing=true;noteDrawCanvas.setPointerCapture(e.pointerId);notePointerStart=p;
-  if(noteDrawTool==='pan'){notePanStart={x:e.clientX,y:e.clientY,left:noteDrawViewport.scrollLeft,top:noteDrawViewport.scrollTop};return;}
+  if(noteDrawTool==='pan'||notePanHeld){notePanStart={x:e.clientX,y:e.clientY,left:noteDrawViewport.scrollLeft,top:noteDrawViewport.scrollTop};return;}
+  if(noteDrawTool==='laser'){addNoteLaser(p);return;}
+  if(noteDrawTool==='lasso'){noteLassoPoints=[p];return;}
   if(noteDrawTool==='area'||noteDrawTool==='crop'){
-    noteSelectedObjectId=null;
+    noteSelectedObjectId=null;noteSelectedIds.clear();
     if(noteDrawTool==='area'&&containsDrawingPoint(noteAreaRect,p)&&noteDrawingReady()){
       pushNoteDrawingHistory();noteAreaMoving=detachNoteArea();
     }else{noteAreaStart=p;noteAreaRect=drawingRect(p,p,noteDrawCanvas.width,noteDrawCanvas.height);noteAreaMoving=false;}
     renderNoteDrawing();updateNoteAreaTools();return;
   }
-  clearNoteArea();pushNoteDrawingHistory();
+  clearNoteArea();
+  if(noteDrawTool==='select'){
+    const handle=noteResizeHandle(p);
+    if(handle){pushNoteDrawingHistory();noteResizeDrag={handle:handle[0],bounds:noteSelectionBounds(),objects:cloneNoteObjects(noteSelection())};return;}
+    const found=findNoteObject(p);
+    if(!found){setNoteSelection([]);return;}
+    if(e.shiftKey){const ids=new Set(noteSelection().map(o=>o.id));ids.has(found.id)?ids.delete(found.id):ids.add(found.id);setNoteSelection([...ids]);}
+    else if(!noteSelection().some(o=>o.id===found.id))setNoteSelection([found.id]);
+    pushNoteDrawingHistory();return;
+  }
+  setNoteSelection([]);pushNoteDrawingHistory();
   if(noteDrawTool==='stamp'){
-    if(noteLogoTemplate){const size=Math.min(160,noteDrawCanvas.width,noteDrawCanvas.height),x=Math.max(0,Math.min(p.x-size/2,noteDrawCanvas.width-size)),y=Math.max(0,Math.min(p.y-size/2,noteDrawCanvas.height-size));noteDrawObjects.push({...noteLogoTemplate,id:'draw-'+crypto.randomUUID(),x1:x,y1:y,x2:x+size,y2:y+size});renderNoteDrawing();}
-    return;
+    if(noteLogoTemplate){const size=Math.min(160,noteDrawCanvas.width,noteDrawCanvas.height),x=Math.max(0,Math.min(p.x-size/2,noteDrawCanvas.width-size)),y=Math.max(0,Math.min(p.y-size/2,noteDrawCanvas.height-size));noteDrawObjects.push({...noteLogoTemplate,id:'draw-'+crypto.randomUUID(),x1:x,y1:y,x2:x+size,y2:y+size});renderNoteDrawing();}return;
   }
-  if(noteDrawTool==='select'){noteSelectedObjectId=findNoteObject(p)?.id||null;renderNoteDrawing();return;}
   if(noteDrawTool==='eraser'){
-    if(noteEraserMode.value==='stroke'){const found=findNoteObject(p);if(found)noteDrawObjects=noteDrawObjects.filter(o=>o.id!==found.id);}else eraseNotePartial(p);
-    renderNoteDrawing();return;
+    if(noteEraserMode.value==='stroke'){const found=findNoteObject(p);if(found)noteDrawObjects=noteDrawObjects.filter(o=>o.id!==found.id);}else eraseNotePartial(p);renderNoteDrawing();return;
   }
-  const shape=noteShapeTool.value;
-  noteDrawCurrent=shape!=='none'?{id:`draw-${Date.now()}`,type:shape,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:noteDrawColor.value,width:Number(noteDrawSize.value),lineStyle:noteLineStyle}:{id:`draw-${Date.now()}`,type:'stroke',points:[p],color:noteDrawColor.value,width:Number(noteDrawSize.value),ink:noteInkType.value,lineStyle:noteLineStyle};
+  const shape=noteShapeTool.value;noteRecognitionLocked=false;noteForceLine=noteModifierHeld(e,noteBoardSettings.shortcuts.straight);
+  noteDrawCurrent=shape!=='none'?{id:'draw-'+crypto.randomUUID(),type:shape,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:noteDrawColor.value,width:Number(noteDrawSize.value),lineStyle:noteLineStyle}:{id:'draw-'+crypto.randomUUID(),type:'stroke',points:[p],color:noteDrawColor.value,width:Number(noteDrawSize.value),ink:noteInkType.value==='pencil'?'secondary':noteInkType.value,lineStyle:noteLineStyle};
+  armNoteRecognition();
 });
 noteDrawCanvas.addEventListener('pointermove',e=>{
-  if(!noteDrawing)return;
-  const p=notePoint(e);
-  if(noteDrawTool==='pan'&&notePanStart){noteDrawViewport.scrollLeft=notePanStart.left-(e.clientX-notePanStart.x);noteDrawViewport.scrollTop=notePanStart.top-(e.clientY-notePanStart.y);return;}
+  if(!noteDrawing)return;const p=notePoint(e);
+  if(notePanStart){noteDrawViewport.scrollLeft=notePanStart.left-(e.clientX-notePanStart.x);noteDrawViewport.scrollTop=notePanStart.top-(e.clientY-notePanStart.y);return;}
+  if(noteDrawTool==='laser'){addNoteLaser(p);return;}
+  if(noteDrawTool==='lasso'){noteLassoPoints.push(p);renderNoteDrawing();return;}
   if(noteDrawTool==='area'||noteDrawTool==='crop'){
     if(noteAreaMoving){
-      const dx=Math.max(-noteAreaRect.x,Math.min(p.x-notePointerStart.x,noteDrawCanvas.width-noteAreaRect.x-noteAreaRect.width));
-      const dy=Math.max(-noteAreaRect.y,Math.min(p.y-notePointerStart.y,noteDrawCanvas.height-noteAreaRect.y-noteAreaRect.height));
-      const object=noteDrawObjects.find(o=>o.id===noteSelectedObjectId);if(object)moveNoteObject(object,dx,dy);
-      noteAreaRect.x+=dx;noteAreaRect.y+=dy;notePointerStart=p;
+      const dx=Math.max(-noteAreaRect.x,Math.min(p.x-notePointerStart.x,noteDrawCanvas.width-noteAreaRect.x-noteAreaRect.width)),dy=Math.max(-noteAreaRect.y,Math.min(p.y-notePointerStart.y,noteDrawCanvas.height-noteAreaRect.y-noteAreaRect.height));
+      const object=noteDrawObjects.find(o=>o.id===noteSelectedObjectId);if(object)moveNoteObject(object,dx,dy);noteAreaRect.x+=dx;noteAreaRect.y+=dy;notePointerStart=p;
     }else if(noteAreaStart)noteAreaRect=drawingRect(noteAreaStart,p,noteDrawCanvas.width,noteDrawCanvas.height);
     renderNoteDrawing();updateNoteAreaTools();return;
   }
-  if(noteDrawTool==='select'&&noteSelectedObjectId){const o=noteDrawObjects.find(x=>x.id===noteSelectedObjectId);if(o){moveNoteObject(o,p.x-notePointerStart.x,p.y-notePointerStart.y);notePointerStart=p;renderNoteDrawing();}return;}
+  if(noteDrawTool==='select'){
+    if(noteResizeDrag)noteResizeSelection(p);else {for(const o of noteSelection())moveNoteObject(o,p.x-notePointerStart.x,p.y-notePointerStart.y);notePointerStart=p;}renderNoteDrawing();return;
+  }
   if(noteDrawTool==='eraser'){if(noteEraserMode.value==='stroke'){const found=findNoteObject(p);if(found)noteDrawObjects=noteDrawObjects.filter(o=>o.id!==found.id);}else eraseNotePartial(p);renderNoteDrawing();return;}
-  if(noteDrawTool==='stamp')return;
-  if(!noteDrawCurrent)return;if(noteDrawCurrent.type==='stroke')noteDrawCurrent.points.push(p);else{noteDrawCurrent.x2=p.x;noteDrawCurrent.y2=p.y;}renderNoteDrawing();
+  if(noteDrawTool==='stamp'||!noteDrawCurrent)return;
+  if(noteRecognitionLocked)return;
+  if(noteDrawCurrent.type==='stroke'){
+    noteForceLine=noteForceLine||noteModifierHeld(e,noteBoardSettings.shortcuts.straight);
+    if(noteForceLine)noteDrawCurrent.points=[noteDrawCurrent.points[0],p];else noteDrawCurrent.points.push(p);
+  }else {noteDrawCurrent.x2=p.x;noteDrawCurrent.y2=p.y;}
+  armNoteRecognition();renderNoteDrawing();
 });
 function finishNoteDrawing(){
-  if(!noteDrawing)return;noteDrawing=false;notePanStart=null;
-  if(noteDrawCurrent){noteDrawObjects.push(noteDrawCurrent);noteDrawCurrent=null;}
+  clearTimeout(noteRecognitionTimer);if(!noteDrawing)return;noteDrawing=false;const wasPan=!!notePanStart;notePanStart=null;noteResizeDrag=null;
+  if(wasPan||noteDrawTool==='laser')return;
+  if(noteDrawTool==='lasso'){const ids=noteSelectedByLasso(noteLassoPoints);noteLassoPoints=[];noteDrawTool='select';setNoteSelection(ids);return;}
+  if(noteDrawCurrent){
+    if(noteDrawCurrent.type==='stroke'&&(noteForceLine||noteBoardSettings.recognize&&noteBoardSettings.recognizeTypes.includes('line'))){
+      const points=noteDrawCurrent.points;
+      if(noteForceLine&&points.length>1){const a=points[0],b=points.at(-1);noteDrawCurrent={...noteDrawCurrent,type:'line',points:undefined,x1:a.x,y1:a.y,x2:b.x,y2:b.y};}
+      else noteDrawCurrent=recognizedInk(noteDrawCurrent,['line'])||noteDrawCurrent;
+    }
+    noteDrawObjects.push(noteDrawCurrent);noteDrawCurrent=null;
+  }
   if(noteDrawTool==='area'||noteDrawTool==='crop'){
     if(noteAreaMoving)saveNoteDrawing();noteAreaMoving=false;noteAreaStart=null;
-    noteAreaHint.textContent=noteAreaRect?.width>=2?(noteDrawTool==='crop'?'Confira a área e clique em Aplicar recorte.':'Arraste dentro da seleção para mover, ou use Copiar e Apagar área.'):'Arraste no quadro para selecionar uma área.';
-    updateNoteAreaTools();return;
+    noteAreaHint.textContent=noteAreaRect?.width>=2?(noteDrawTool==='crop'?'Confira a área e clique em Aplicar recorte.':'Arraste dentro da seleção para mover, ou use Copiar e Apagar área.'):'Arraste no quadro para selecionar uma área.';updateNoteAreaTools();return;
   }
   if(noteDrawTool!=='pan')saveNoteDrawing();
 }
 noteDrawCanvas.addEventListener('pointerup',finishNoteDrawing);
-noteDrawCanvas.addEventListener('pointercancel',finishNoteDrawing);
-function selectNoteDrawTool(tool){clearNoteArea();noteSelectedObjectId=null;noteDrawTool=tool;updateNoteAreaTools();renderNoteDrawing();noteDrawPen.classList.toggle('active',tool==='pen');noteDrawEraser.classList.toggle('active',tool==='eraser');noteDrawPan.classList.toggle('active',tool==='pan');noteDrawSelect.classList.toggle('active',tool==='select');noteDrawCanvas.style.cursor=tool==='pan'?'grab':tool==='select'?'default':tool==='eraser'?'cell':'crosshair';noteDrawingToolbar?.refresh();}
+noteDrawCanvas.addEventListener('pointercancel',()=>{clearTimeout(noteRecognitionTimer);finishNoteDrawing();});
+noteDrawCanvas.addEventListener('dblclick',event=>{if(noteDrawTool==='select'){const object=findNoteObject(notePoint(event));if(object?.type==='text')editNoteText(object);}});
+noteDrawViewport.addEventListener('wheel',event=>{
+  if(noteStudioBody.dataset.mode!=='draw')return;event.preventDefault();
+  if(noteBoardSettings.wheel==='none')return;
+  if(noteBoardSettings.wheel==='zoom'||noteModifierHeld(event,noteBoardSettings.shortcuts.zoomModifier))zoomNoteAt(noteDrawZoom*Math.exp(-Math.max(-200,Math.min(200,event.deltaY))*.002),event);
+  else {noteDrawViewport.scrollTop+=event.deltaY;noteDrawViewport.scrollLeft+=event.deltaX;}
+},{passive:false});
+
+function selectNoteDrawTool(tool){clearTimeout(noteRecognitionTimer);noteLassoPoints=[];noteSelectedIds.clear();clearNoteArea();noteSelectedObjectId=null;noteDrawTool=tool;updateNoteAreaTools();renderNoteDrawing();noteDrawPen.classList.toggle('active',tool==='pen');noteDrawEraser.classList.toggle('active',tool==='eraser');noteDrawPan.classList.toggle('active',tool==='pan');noteDrawSelect.classList.toggle('active',tool==='select');noteDrawCanvas.style.cursor=tool==='pan'?'grab':tool==='select'?'default':tool==='eraser'?'cell':'crosshair';noteDrawingToolbar?.refresh();}
 noteDrawPen.addEventListener('click',()=>{noteShapeTool.value='none';selectNoteDrawTool('pen');});
 noteDrawEraser.addEventListener('click',()=>selectNoteDrawTool('eraser'));
 noteDrawPan.addEventListener('click',()=>selectNoteDrawTool('pan'));
@@ -4658,19 +4775,23 @@ noteAreaTools.addEventListener('click',event=>{
   const button=event.target.closest('button');if(!button||button.disabled)return;
   if(button.dataset.areaTool){selectNoteDrawTool(button.dataset.areaTool);noteAreaHint.textContent='Arraste no quadro para marcar uma área.';return;}
   const action=button.dataset.areaAction;
-  if(action==='cancel'){clearNoteArea();noteSelectedObjectId=null;renderNoteDrawing();return;}
-  if(action==='paste'&&noteAreaClipboard){
-    pushNoteDrawingHistory();const object=cloneNoteObjects([noteAreaClipboard])[0];object.id='draw-'+crypto.randomUUID();
-    const width=object.x2-object.x1,height=object.y2-object.y1;
-    if(width>noteDrawCanvas.width||height>noteDrawCanvas.height){noteDrawPendingHistory=null;noteAreaHint.textContent='A área copiada é maior que este quadro. Desfaça o recorte para colar.';return;}
-    const x=Math.min(object.x1+20,noteDrawCanvas.width-width),y=Math.min(object.y1+20,noteDrawCanvas.height-height);
-    moveNoteObject(object,x-object.x1,y-object.y1);noteDrawObjects.push(object);noteSelectedObjectId=object.id;
-    noteDrawTool='area';noteAreaRect={x,y,width,height};saveNoteDrawing();return;
+  if(action==='cancel'){clearNoteArea();setNoteSelection([]);return;}
+  if(action==='copy'&&!noteAreaRect){const selected=noteSelection();if(selected.length){noteSelectionClipboard=cloneNoteObjects(selected);noteAreaClipboard=null;noteAreaHint.textContent='Seleção copiada. Use Ctrl+V para colar.';updateNoteAreaTools();}return;}
+  if(action==='delete'&&!noteAreaRect){deleteNoteSelection();return;}
+  if(action==='paste'&&(noteAreaClipboard||noteSelectionClipboard)){
+    const objects=cloneNoteObjects(noteSelectionClipboard||[noteAreaClipboard]);
+    const bounds=noteSelectionBounds(objects),w=bounds.x2-bounds.x1,h=bounds.y2-bounds.y1;
+    if(w>noteDrawCanvas.width||h>noteDrawCanvas.height){noteAreaHint.textContent='A seleção é maior que este quadro.';return;}
+    pushNoteDrawingHistory();const dx=Math.min(20,noteDrawCanvas.width-bounds.x2),dy=Math.min(20,noteDrawCanvas.height-bounds.y2);
+    for(const object of objects){object.id='draw-'+crypto.randomUUID();moveNoteObject(object,dx,dy);noteDrawObjects.push(object);}
+    if(noteSelectionClipboard){selectNoteDrawTool('select');setNoteSelection(objects.map(o=>o.id));}
+    else {const object=objects[0];noteSelectedObjectId=object.id;noteDrawTool='area';noteAreaRect={x:object.x1,y:object.y1,width:w,height:h};}
+    saveNoteDrawing();return;
   }
   if(!noteAreaRect||noteAreaRect.width<2||noteAreaRect.height<2)return;
   const snapshot=noteDrawingSnapshot();if(!snapshot)return;
   const piece=noteAreaPixels(snapshot,noteAreaRect);
-  if(action==='copy'){noteAreaClipboard=noteBitmapObject(piece,noteAreaRect.x,noteAreaRect.y);noteAreaHint.textContent='Área copiada. Use Colar para criar uma cópia neste desenho.';updateNoteAreaTools();return;}
+  if(action==='copy'){noteSelectionClipboard=null;noteAreaClipboard=noteBitmapObject(piece,noteAreaRect.x,noteAreaRect.y);noteAreaHint.textContent='Área copiada. Use Colar para criar uma cópia neste desenho.';updateNoteAreaTools();return;}
   pushNoteDrawingHistory();
   if(action==='crop'){
     noteDrawCanvas.width=piece.width;noteDrawCanvas.height=piece.height;noteDrawObjects=[noteBitmapObject(piece)];applyNoteDrawZoom();
@@ -4696,16 +4817,28 @@ function redoNoteDrawing(){
 noteDrawUndo.addEventListener('click',undoNoteDrawing);
 noteDrawRedo.addEventListener('click',redoNoteDrawing);
 noteStudioModal.addEventListener('keydown',event=>{
-  if(event.defaultPrevented||noteStudioModal.classList.contains('hidden')||noteStudioBody.dataset.mode!=='draw'||noteDrawing)return;
-  if(event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])'))return;
-  const action=drawingShortcut(event);if(!action)return;
-  event.preventDefault();event.stopPropagation();
+  if(event.defaultPrevented||event.isComposing||noteStudioModal.classList.contains('hidden')||noteStudioBody.dataset.mode!=='draw')return;
+  if(event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),dialog'))return;
+  const binding=whiteboardKey(event);noteHeldKeys.add(binding);
+  if(binding===noteBoardSettings.shortcuts.pan){event.preventDefault();notePanHeld=true;noteDrawCanvas.style.cursor='grab';return;}
+  if(binding===noteBoardSettings.shortcuts.straight||binding===noteBoardSettings.shortcuts.zoomModifier)return;
+  if(noteDrawing)return;
+  if(event.key==='Escape'){event.preventDefault();clearNoteArea();setNoteSelection([]);return;}
+  let action=binding==='Ctrl+c'?'copy':binding==='Ctrl+v'?'paste':null;
+  if(!action)action=Object.keys(noteBoardSettings.shortcuts).find(key=>!['pan','straight','zoomModifier'].includes(key)&&noteBoardSettings.shortcuts[key]===binding);
+  if(binding==='Ctrl+Shift+z'&&noteBoardSettings.shortcuts.redo==='Ctrl+y')action='redo';
+  if(!action)return;event.preventDefault();event.stopPropagation();
   if(action==='undo')undoNoteDrawing();else if(action==='redo')redoNoteDrawing();
+  else if(action==='delete')deleteNoteSelection();else if(action==='pen'||action==='secondary')chooseNotePen(action);
+  else if(action==='eraser')selectNoteDrawTool('eraser');else if(action==='text')editNoteText();
   else noteAreaTools.querySelector('[data-area-action="'+action+'"]').click();
 });
-noteDrawClear.addEventListener('click',()=>{pushNoteDrawingHistory();noteDrawObjects=[];noteSelectedObjectId=null;noteLegacyImage=null;clearNoteArea();const tab=getActiveTab();if(tab)delete tab.drawing;saveNoteDrawing();});
-noteZoomOut.addEventListener('click',()=>{noteDrawZoom=Math.max(.5,noteDrawZoom-.25);applyNoteDrawZoom();});
-noteZoomIn.addEventListener('click',()=>{noteDrawZoom=Math.min(2,noteDrawZoom+.25);applyNoteDrawZoom();});
+noteStudioModal.addEventListener('keyup',event=>{noteHeldKeys.delete(whiteboardKey(event));if(whiteboardKey(event)===noteBoardSettings.shortcuts.pan){notePanHeld=false;noteDrawCanvas.style.cursor=noteDrawTool==='pan'?'grab':'crosshair';}});
+window.addEventListener('blur',()=>{noteHeldKeys.clear();notePanHeld=false;});
+noteDrawColor.addEventListener('input',captureNotePen);noteDrawSize.addEventListener('change',captureNotePen);
+noteDrawClear.addEventListener('click',()=>{pushNoteDrawingHistory();noteDrawObjects=[];noteSelectedIds.clear();noteSelectedObjectId=null;noteLegacyImage=null;clearNoteArea();const tab=getActiveTab();if(tab)delete tab.drawing;saveNoteDrawing();});
+noteZoomOut.addEventListener('click',()=>zoomNoteAt(noteDrawZoom-.25));
+noteZoomIn.addEventListener('click',()=>zoomNoteAt(noteDrawZoom+.25));
 applyNoteDrawZoom();
 function updateActiveTabTitle(){
   const activeTab = getActiveTab();
@@ -9034,14 +9167,20 @@ initializePostMediaViewer({
   openProfile:openViewProfile
 });
 
+noteSaveBoardPreferences=preferences=>{if(noteState&&currentUid){noteState.whiteboardPreferences=structuredClone(preferences);saveNoteState();}};
 noteDrawingToolbar=initializeDrawingToolbar({
   toolbar:noteToolbar,areaTools:noteAreaTools,pen:noteDrawPen,eraser:noteDrawEraser,pan:noteDrawPan,select:noteDrawSelect,
   color:noteDrawColor,size:noteDrawSize,ink:noteInkType,eraserMode:noteEraserMode,shape:noteShapeTool,
   undo:noteDrawUndo,redo:noteDrawRedo,clear:noteDrawClear,zoomIn:noteZoomIn,zoomOut:noteZoomOut,zoomLabel:noteZoomLabel,
-  getState:()=>({tool:noteDrawTool,lineStyle:noteLineStyle,hasArea:!!noteAreaRect}),setTool:selectNoteDrawTool,
-  setLineStyle:value=>{noteLineStyle=value;},
+  getState:()=>({tool:noteDrawTool,lineStyle:noteLineStyle,hasArea:!!noteAreaRect||noteSelection().length>0,preferences:noteBoardSettings}),setTool:selectNoteDrawTool,selectPen:chooseNotePen,
+  setLineStyle:value=>{noteLineStyle=value;captureNotePen();},
+  setPalette:palette=>{noteBoardSettings.palette=palette;noteSaveBoardPreferences(noteBoardSettings);},
   stamp:async()=>{try{await prepareNoteLogo();selectNoteDrawTool('stamp');noteAreaHint.textContent='Toque no quadro para carimbar a logo do Hub.';}catch{noteAreaHint.textContent='Não foi possível carregar a logo. Tente novamente.';}},
-  close:()=>setNoteStudioMode('text')
+  close:()=>{},
+  settings:()=>openWhiteboardSettings({host:noteStudioModal,getSettings:()=>noteBoardSettings,setSettings:setNoteBoardPreferences}),
+  text:()=>editNoteText(),
+  importFile:async file=>{const tabId=getActiveTab()?.id;try{const canvas=file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')?await loadWhiteboardPDF(file,chooseNotePDFPage):await loadWhiteboardImage(file);if(canvas&&getActiveTab()?.id===tabId)addNoteBitmap(canvas);}catch(error){noteMessage(error.message||'Não foi possível abrir o arquivo.');}},
+  exportFile:async type=>{try{const canvas=noteExportCanvas();if(type==='pdf')downloadWhiteboard(await canvasPDF(canvas),'quadro.pdf');else canvas.toBlob(blob=>{if(blob)downloadWhiteboard(blob,'quadro.png');},'image/png');}catch(error){noteMessage(error.message);}}
 });
 </script>
 </body>

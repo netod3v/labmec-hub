@@ -30,3 +30,29 @@ html:is([data-theme="dark"],[data-theme="black"]) .note-reference-toolbar .note-
 .note-area-tools[data-visible="false"]{display:none;}
 .note-area-tools>[data-area-tool]{display:none;}
 @media(max-width:720px){.note-reference-toolbar{bottom:10px;max-width:calc(100% - 16px);padding:5px 7px;}.note-toolbar-strip{gap:5px;}.note-reference-toolbar .whiteboard-tool{width:38px;height:38px;}.note-pen-popover{left:0;}.note-area-tools{top:10px;max-width:calc(100% - 24px);}}
+.note-reference-toolbar[hidden],.note-reference-toolbar [hidden],.note-toolbar-reopen[hidden],.note-area-tools[hidden]{display:none!important;}
+.note-reference-toolbar .note-tool-group:last-child{position:sticky;right:0;z-index:2;background:var(--paper);padding-left:5px;box-shadow:-5px 0 7px var(--paper);}
+.note-toolbar-reopen{position:absolute;z-index:12;bottom:16px;left:16px;border:1px solid var(--border);border-radius:12px;background:var(--paper);color:var(--ink);padding:10px 14px;font:600 12px Inter,sans-serif;box-shadow:0 5px 20px #132f4c20;cursor:pointer;}
+.note-board-dialog{width:min(540px,calc(100vw - 24px));max-height:88dvh;overflow:auto;padding:22px;border:1px solid var(--border);border-radius:16px;background:var(--paper);color:var(--ink);box-shadow:0 20px 70px #102f4b40;font:13px/1.6 Inter,sans-serif;}
+.note-board-dialog::backdrop{background:#10243666;backdrop-filter:blur(3px);}
+.note-board-dialog h2{font:600 20px 'Space Grotesk',sans-serif;margin:0 0 14px;}
+.note-board-dialog textarea{box-sizing:border-box;width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--parchment);color:var(--ink);font:15px/1.5 Inter,sans-serif;resize:vertical;}
+.note-board-dialog button{padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--paper);color:var(--ink);cursor:pointer;font:600 12px Inter,sans-serif;}
+.note-board-dialog input[type="number"],.note-board-dialog select{padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--paper);color:var(--ink);}
+.note-board-dialog form>button{margin:10px 8px 0 0;}
+.note-board-dialog .btn-primary{background:var(--forest);color:var(--paper);}
+.note-board-settings{padding:0;width:min(680px,calc(100vw - 24px));overflow:hidden;}
+.note-board-settings form{display:flex;flex-direction:column;max-height:88dvh;}
+.note-board-settings-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 22px 12px;}
+.note-board-settings-heading h2{margin:0;}.note-board-settings p{margin:5px 0 12px;color:var(--text-2);font-size:12px;}
+.note-board-settings-tabs{display:flex;gap:6px;padding:0 22px 12px;border-bottom:1px solid var(--border);}
+.note-board-settings-tabs button[aria-selected="true"]{background:var(--forest);color:var(--paper);border-color:var(--forest);}
+.note-board-settings-content{min-height:0;padding:0 22px 18px;overflow-y:auto;scrollbar-width:thin;}
+.note-board-settings-content section{margin:0;padding:16px 0 2px;border-bottom:1px solid var(--border);}.note-board-settings-content section:last-child{border:0;}
+.note-board-settings h3{margin:0 0 10px;font-size:13px;}
+.note-board-check{display:flex;align-items:flex-start;gap:8px;margin:9px 0;cursor:pointer;}.note-board-check input{margin-top:3px;accent-color:var(--forest);}
+.note-board-tool-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px;}
+.note-board-shortcut{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}.note-board-shortcut>span{flex:1;}.note-board-shortcut kbd{padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--parchment);font:11px Inter,sans-serif;}
+.note-board-settings-footer{display:flex;align-items:center;gap:8px;margin:0;padding:12px 18px;border-top:1px solid var(--border);}.note-board-settings-footer>span{flex:1;}
+.note-board-settings .note-board-settings-message{min-height:0;padding:0 22px;margin:0 0 8px;}.note-board-settings-message:empty{display:none;}
+@media(max-width:520px){.note-board-settings-heading{padding:16px;}.note-board-settings-tabs{padding:0 16px 12px;}.note-board-settings-content{min-height:0;padding:0 16px 14px;}.note-board-settings-footer{flex-wrap:wrap;}.note-board-settings input,.note-board-settings select{font-size:16px;}.note-board-shortcut{gap:6px;font-size:12px;}.note-board-shortcut button{font-size:11px;padding:7px;}}

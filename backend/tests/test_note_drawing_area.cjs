@@ -6,8 +6,10 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright-core');
 const root = path.resolve(__dirname, '../..');
 const source = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const geometry = fs.readFileSync(path.join(root, 'assets/note-drawing-area.js'), 'utf8').replace(/export /g, '');
+const modelSource = fs.readFileSync(path.join(root, 'assets/note-whiteboard-model.js'), 'utf8').replace(/export /g, '');
 const toolbarSource = fs.readFileSync(path.join(root, 'assets/note-drawing-toolbar.js'), 'utf8').replace(/export /g, '');
 const toolbarCSS = fs.readFileSync(path.join(root, 'assets/note-drawing-toolbar.css'), 'utf8');
+const applicationCSS = [...source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(match=>match[1]).join('\n');
 const core = source.slice(source.indexOf('let noteSavedRange = null;'), source.indexOf('function renderNoteStudio(){'));
 const handlers = source.slice(source.indexOf("noteDrawCanvas.addEventListener('pointerdown'"), source.indexOf('function updateActiveTabTitle(){'));
 const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect','noteDrawUndo','noteDrawRedo','noteDrawClear','noteZoomIn','noteZoomOut','noteInkType','noteEraserMode','noteShapeTool','noteDrawSize','noteDrawColor'];
@@ -16,12 +18,19 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
   const browser = await chromium.launch({headless:true, executablePath:process.env.EDGE_EXECUTABLE});
   try {
     const page = await browser.newPage({viewport:{width:1600,height:1100},hasTouch:true});
+    page.setDefaultTimeout(8000);
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
+    await page.context().route('http://localhost/assets/**',route=>{
+      const relative=decodeURIComponent(new URL(route.request().url()).pathname).slice(1),file=path.resolve(root,relative);
+      if(!file.startsWith(path.join(root,'assets')+path.sep)||!fs.existsSync(file))return route.fulfill({status:404,body:'Not found'});
+      const ext=path.extname(file),type=['.js','.mjs'].includes(ext)?'text/javascript':ext==='.css'?'text/css':ext==='.png'?'image/png':'application/octet-stream';
+      return route.fulfill({body:fs.readFileSync(file),contentType:type});
+    });
     await page.route('http://localhost/drawing-test',route=>route.fulfill({body:'<!doctype html><html><body></body></html>',contentType:'text/html'}));
     await page.route('http://localhost/assets/labiomec-logo-transparent.png',route=>route.fulfill({body:fs.readFileSync(path.join(root,'assets/labiomec-logo-transparent.png')),contentType:'image/png'}));
     await page.goto('http://localhost/drawing-test');
     await page.setContent('<canvas width="1400" height="760" style="touch-action:none"></canvas><div id="controls"></div>');
-    await page.evaluate(({core,handlers,geometry,controls,toolbarSource})=>{
+    await page.evaluate(({core,handlers,geometry,controls,toolbarSource,modelSource})=>{
       const noteDrawCanvas=document.querySelector('canvas');noteDrawCanvas.tabIndex=0;
       const noteStudioModal=document.body,noteStudioBody=document.body;noteStudioBody.dataset.mode='draw';
       const noteDrawViewport=document.body;
@@ -31,19 +40,20 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
         ['crop','copy','paste','delete','cancel'].map(x=>`<button data-area-action="${x}">${x}</button>`).join('')+'<span class="note-area-hint"></span>';
       const noteAreaHint=noteAreaTools.querySelector('span');
       const elements=Object.fromEntries(controls.map(name=>[name,document.createElement('button')]));
+      elements.noteDrawColor=document.createElement('input');elements.noteDrawColor.type='color';
       for(const [name,values] of Object.entries({noteDrawSize:['2','5','9'],noteInkType:['pen','pencil','highlighter'],noteEraserMode:['partial','stroke'],noteShapeTool:['none','line','rect','ellipse']})){
         elements[name]=document.createElement('select');for(const value of values)elements[name].add(new Option(value,value));
       }
       elements.noteDrawSize.value='5';elements.noteDrawColor.value='#ff0000';elements.noteShapeTool.value='none';elements.noteEraserMode.value='partial';
       const tab={id:'test'};let saves=0;
       const getActiveTab=()=>tab,saveNoteState=()=>{saves++;};
-      const code=geometry+'\n'+toolbarSource+'\n'+core+'\n'+handlers+`
+      const code=geometry+'\n'+modelSource+'\n'+toolbarSource+'\n'+core+'\n'+handlers+`
         window.drawingTest={
-          seed(){noteDrawCanvas.width=1400;noteDrawCanvas.height=760;noteDrawObjects=[{id:'line',type:'stroke',points:[{x:0,y:50},{x:150,y:50}],width:6,color:'#ff0000'}];noteLegacyImage=null;noteSelectedObjectId=null;clearNoteArea();noteDrawHistory.clear();noteDrawRedoHistory.clear();noteDrawPendingHistory=null;noteDrawZoom=1;applyNoteDrawZoom();renderNoteDrawing();},
+          seed(){noteShapeTool.value='none';noteInkType.value='pen';noteLineStyle='solid';noteDrawCanvas.width=1400;noteDrawCanvas.height=760;noteDrawObjects=[{id:'line',type:'stroke',points:[{x:0,y:50},{x:150,y:50}],width:6,color:'#ff0000'}];noteLegacyImage=null;noteSelectedObjectId=null;clearNoteArea();noteSelectedIds.clear();noteSelectedObjectId=null;noteLassoPoints=[];noteLaserPoints=[];noteResizeDrag=null;noteBoardSettings=defaultWhiteboardSettings();noteDrawHistory.clear();noteDrawRedoHistory.clear();noteDrawPendingHistory=null;noteDrawZoom=1;applyNoteDrawZoom();renderNoteDrawing();},
           tool:selectNoteDrawTool,
           undo(){noteDrawUndo.click();},
           pixel(x,y){return [...noteDrawingSnapshot().getContext('2d').getImageData(x,y,1,1).data];},
-          state(){return {width:noteDrawCanvas.width,height:noteDrawCanvas.height,objects:noteDrawObjects.length,saved:getActiveTab(),selection:noteAreaRect};},
+          state(){return {width:noteDrawCanvas.width,height:noteDrawCanvas.height,objects:noteDrawObjects.length,zoom:noteDrawZoom,saved:getActiveTab(),selection:noteAreaRect};},
           reload(){const data=JSON.parse(JSON.stringify(getActiveTab()));noteBitmapCache.clear();restoreNoteDrawing({objects:data.drawingObjects,width:data.drawingWidth,height:data.drawingHeight,legacy:data.drawing});},
           zoom(){noteZoomIn.click();},
           async legacy(){const c=document.createElement('canvas');c.width=1400;c.height=760;c.getContext('2d').fillRect(0,0,1400,760);noteLegacyImage=new Image();noteLegacyImage.src=c.toDataURL();await noteLegacyImage.decode();noteDrawObjects=[];renderNoteDrawing();},
@@ -53,17 +63,34 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
             const toolbar=document.createElement('div');toolbar.className='whiteboard-toolbar';panel.append(toolbar);
             for(const item of [noteDrawPen,noteDrawEraser,noteDrawPan,noteDrawSelect,noteDrawUndo,noteDrawRedo,noteDrawClear,noteZoomIn,noteZoomOut]){item.className='whiteboard-tool';item.innerHTML='<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>';}
             noteDrawPen.id='note-draw-pen';noteZoomLabel.id='note-zoom-label';noteAreaTools.className='note-area-tools';
-            noteDrawingToolbar=initializeDrawingToolbar({toolbar,areaTools:noteAreaTools,pen:noteDrawPen,eraser:noteDrawEraser,pan:noteDrawPan,select:noteDrawSelect,color:noteDrawColor,size:noteDrawSize,ink:noteInkType,eraserMode:noteEraserMode,shape:noteShapeTool,undo:noteDrawUndo,redo:noteDrawRedo,clear:noteDrawClear,zoomIn:noteZoomIn,zoomOut:noteZoomOut,zoomLabel:noteZoomLabel,getState:()=>({tool:noteDrawTool,lineStyle:noteLineStyle,hasArea:!!noteAreaRect}),setTool:selectNoteDrawTool,setLineStyle:value=>{noteLineStyle=value;},stamp:async()=>{await prepareNoteLogo();selectNoteDrawTool('stamp');},close:()=>{document.body.dataset.mode='text';}});
+            noteDrawingToolbar=initializeDrawingToolbar({toolbar,areaTools:noteAreaTools,pen:noteDrawPen,eraser:noteDrawEraser,pan:noteDrawPan,select:noteDrawSelect,color:noteDrawColor,size:noteDrawSize,ink:noteInkType,eraserMode:noteEraserMode,shape:noteShapeTool,undo:noteDrawUndo,redo:noteDrawRedo,clear:noteDrawClear,zoomIn:noteZoomIn,zoomOut:noteZoomOut,zoomLabel:noteZoomLabel,getState:()=>({tool:noteDrawTool,lineStyle:noteLineStyle,hasArea:!!noteAreaRect||noteSelection().length>0,preferences:noteBoardSettings}),setTool:selectNoteDrawTool,selectPen:chooseNotePen,setLineStyle:value=>{noteLineStyle=value;},stamp:async()=>{await prepareNoteLogo();selectNoteDrawTool('stamp');},close:()=>{},text:()=>editNoteText(),settings:()=>window.boardSettings.openWhiteboardSettings({host:document.body,getSettings:()=>noteBoardSettings,setSettings:setNoteBoardPreferences}),setPalette:value=>{noteBoardSettings.palette=value;},importFile:async file=>{const canvas=file.type==='application/pdf'?await window.boardFiles.loadWhiteboardPDF(file,chooseNotePDFPage):await window.boardFiles.loadWhiteboardImage(file);if(canvas)addNoteBitmap(canvas);},exportFile:async type=>{const canvas=noteExportCanvas();if(type==='pdf')window.boardFiles.downloadWhiteboard(await window.boardFiles.canvasPDF(canvas),'quadro.pdf');else canvas.toBlob(blob=>window.boardFiles.downloadWhiteboard(blob,'quadro.png'),'image/png');}});
           }
-          ,toolState(){return {tool:noteDrawTool,ink:noteInkType.value,size:noteDrawSize.value,lineStyle:noteLineStyle};}
+          ,toolState(){return {tool:noteDrawTool,ink:noteInkType.value,size:noteDrawSize.value,color:noteDrawColor.value,lineStyle:noteLineStyle};}
           ,stampPixels(){const data=noteDrawingSnapshot().getContext('2d').getImageData(520,320,160,160).data;return data.some((v,i)=>i%4===3&&v>0);}
+          ,settings(){return structuredClone(noteBoardSettings);}
+          ,preferences:setNoteBoardPreferences
+          ,objects(){return cloneNoteObjects(noteDrawObjects);}
+          ,selected(){return noteSelection().map(o=>o.id);}
+          ,editText:editNoteText
+          ,addImage:addNoteBitmap
+          ,exportCanvas:noteExportCanvas
+          ,laserCount(){return noteLaserPoints.length;}
+          ,newObjects(objects){noteDrawObjects=cloneNoteObjects(objects);noteSelectedIds.clear();noteSelectedObjectId=null;renderNoteDrawing();}
+          ,select: setNoteSelection
+          ,choosePen:chooseNotePen
+          ,inkPreferences(color,width){noteDrawColor.value=color;noteDrawColor.dispatchEvent(new Event('input'));if(![...noteDrawSize.options].some(o=>o.value===String(width)))noteDrawSize.add(new Option(String(width),String(width)));noteDrawSize.value=String(width);noteDrawSize.dispatchEvent(new Event('change'));}
+          ,shape(value){noteShapeTool.value=value;selectNoteDrawTool('pen');}
+          ,choosePDFPage:chooseNotePDFPage
+          ,trackPreferences(){noteSaveBoardPreferences=value=>window.savedBoardPreferences=structuredClone(value);}
+          ,clipboardState(){return {objects:noteSelectionClipboard?.length,area:!!noteAreaClipboard,selected:noteSelection().map(o=>o.id),tool:noteDrawTool,copyDisabled:noteAreaTools.querySelector('[data-area-action="copy"]').disabled,pasteDisabled:noteAreaTools.querySelector('[data-area-action="paste"]').disabled};}
         };
       `;
       // Tests execute the editor's actual functions and pointer/button handlers.
       new Function('noteStudioModal','noteStudioBody','noteDrawCanvas','noteDrawViewport','noteZoomLabel','noteAreaTools','noteAreaHint','getActiveTab','saveNoteState',...controls,code)(noteStudioModal,noteStudioBody,noteDrawCanvas,noteDrawViewport,noteZoomLabel,noteAreaTools,noteAreaHint,getActiveTab,saveNoteState,...controls.map(x=>elements[x]));
-    },{core,handlers,geometry,controls,toolbarSource});
+    },{core,handlers,geometry,controls,toolbarSource,modelSource});
     const run=(fn)=>page.evaluate(fn);
     async function drag(x1,y1,x2,y2){
+      await page.evaluate(()=>window.scrollTo(0,0));
       const box=await page.locator('canvas').boundingBox();
       await page.mouse.move(box.x+x1,box.y+y1);await page.mouse.down();
       await page.mouse.move(box.x+x2,box.y+y2,{steps:8});await page.mouse.up();
@@ -163,7 +190,7 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     });
     assert.deepEqual(native,{textPrevented:false,textModePrevented:false,hiddenPrevented:false});
     await run(()=>{drawingTest.seed();drawingTest.initializeBar();});
-    await page.click('[aria-label="Lápis"]');
+    await page.click('[aria-label="Caneta 2"]');
     assert.equal((await run(()=>drawingTest.toolState())).ink,'pencil');
     await page.click('#note-draw-pen');
     assert.equal((await run(()=>drawingTest.toolState())).ink,'pen','pen restores pen ink after pencil');
@@ -207,7 +234,128 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
       assert.equal(await page.locator('.note-pen-popover').isVisible(),true);
     }
     await page.screenshot({path:path.join(process.env.TEMP||'/tmp','labmec-drawing-toolbar-mobile.png')});
+    await page.setViewportSize({width:1600,height:1100});
+    await page.click('[aria-label="Recolher ferramentas"]');
+    assert.equal(await page.locator('.note-reference-toolbar').isVisible(),false);
+    await run(()=>{drawingTest.seed();drawingTest.shape('rect');});await drag(300,200,500,350);
+    assert.equal((await run(()=>drawingTest.objects())).at(-1).type,'rect','drawing remains usable with toolbar collapsed');
+    await page.click('.note-toolbar-reopen');assert.equal(await page.locator('.note-reference-toolbar').isVisible(),true);
+    for(const type of ['ellipse','triangle','cube','cylinder','pyramid','sphere']){
+      await run(()=>drawingTest.seed());await page.evaluate(type=>drawingTest.shape(type),type);await drag(300,200,500,350);
+      assert.equal((await run(()=>drawingTest.objects())).at(-1).type,type);
+      assert.equal(await run(()=>{const data=drawingTest.exportCanvas().getContext('2d').getImageData(290,190,220,170).data;return data.some((v,i)=>i%4!==3&&v<100);}),true,type+' actually paints pixels');
+    }
+
+    await run(()=>{drawingTest.seed();drawingTest.tool('laser');});
+    await drag(300,250,600,350);
+    assert.equal((await run(()=>drawingTest.state())).objects,1,'laser is not saved');
+    assert.ok(await run(()=>drawingTest.laserCount())>0);await page.waitForTimeout(1100);
+    assert.equal(await run(()=>drawingTest.laserCount()),0,'laser fades away');
+
+    await run(()=>{drawingTest.seed();drawingTest.tool('pen');});
+    await page.mouse.move(300,200);await page.mouse.down();await page.mouse.move(450,202,{steps:12});await page.mouse.up();
+    assert.equal((await run(()=>drawingTest.objects())).at(-1).type,'line','almost straight ink snaps on release');
+    await run(()=>{drawingTest.seed();drawingTest.tool('pen');});
+    await page.mouse.move(300,200);await page.mouse.down();
+    for(const [x,y]of [[450,200],[450,350],[300,350],[300,200]])await page.mouse.move(x,y,{steps:8});
+    await page.waitForTimeout(650);await page.mouse.up();
+    assert.equal((await run(()=>drawingTest.objects())).at(-1).type,'rect','hold recognizes a rectangle');
+    await run(()=>{drawingTest.seed();drawingTest.preferences({...drawingTest.settings(),recognize:false});drawingTest.tool('pen');});
+    await drag(300,200,500,200);
+    assert.equal((await run(()=>drawingTest.objects())).at(-1).type,'stroke','recognition can be disabled');
+    await page.keyboard.down('Control');await drag(300,300,500,360);await page.keyboard.up('Control');
+    assert.equal((await run(()=>drawingTest.objects())).at(-1).type,'line','holding Ctrl forces a straight line');
+
+    await run(()=>{drawingTest.seed();drawingTest.newObjects([{id:'inside',type:'stroke',points:[{x:110,y:110},{x:180,y:180}],color:'#111827',width:4},{id:'outside',type:'stroke',points:[{x:600,y:110},{x:650,y:180}],color:'#111827',width:4}]);drawingTest.tool('lasso');});
+    await page.mouse.move(90,90);await page.mouse.down();for(const [x,y]of [[240,90],[240,240],[90,240],[90,90]])await page.mouse.move(x,y,{steps:4});await page.mouse.up();
+    assert.deepEqual(await run(()=>drawingTest.selected()),['inside'],'lasso selects only enclosed strokes');
+    await drag(180,180,280,280);
+    assert.equal((await run(()=>drawingTest.objects()))[0].points.at(-1).x,280,'corner handle resizes selected object');
+    await page.keyboard.press('Control+c');await page.keyboard.press('Control+v');
+    assert.equal((await run(()=>drawingTest.state())).objects,3,'object selections can be copied '+JSON.stringify(await run(()=>drawingTest.clipboardState()))+' '+JSON.stringify(errors));
+    await page.keyboard.press('Delete');assert.equal((await run(()=>drawingTest.state())).objects,2);
+    await page.keyboard.press('Control+z');assert.equal((await run(()=>drawingTest.state())).objects,3);
+
+    await run(()=>{drawingTest.seed();drawingTest.trackPreferences();drawingTest.editText();});
+    await page.locator('[aria-label="Texto da caixa"]').fill('Pesquisa do laboratório\nNotas do experimento');
+    await page.click('button:has-text("Salvar texto")');
+    assert.equal((await run(()=>drawingTest.objects())).at(-1).type,'text');
+    await run(()=>drawingTest.reload());assert.equal((await run(()=>drawingTest.objects())).at(-1).text.includes('Pesquisa'),true);
+    await page.keyboard.press('Control+z');assert.equal((await run(()=>drawingTest.state())).objects,1);
+
+    await page.evaluate(async()=>{
+      window.boardFiles=await import('/assets/note-whiteboard-files.js');
+      window.boardSettings=await import('/assets/note-whiteboard-settings.js');
+      boardSettings.openWhiteboardSettings({host:document.body,getSettings:()=>drawingTest.settings(),setSettings:value=>drawingTest.preferences(value)});
+    });
+    await page.selectOption('[aria-label="Tipo de fundo"]','grid');
+    await page.locator('label').filter({hasText:'Ignorar o scroll'}).locator('input').check();
+    await page.click('[role="tab"]:has-text("Ferramentas")');
+    await page.locator('.note-board-tool-list label').filter({hasText:'Caneta 2'}).locator('input').uncheck();
+    await page.click('[role="tab"]:has-text("Atalhos")');
+    await page.click('[aria-label="Editar atalho: Caneta 1"]');await page.keyboard.press('Control+c');
+    assert.ok((await page.locator('.note-board-settings-message').textContent()).includes('já está em uso'),'fixed copy cannot be reassigned');
+    await page.keyboard.press('q');
+    await page.click('button:has-text("Salvar preferências")');
+    assert.equal((await run(()=>drawingTest.settings())).background,'grid');assert.equal((await run(()=>drawingTest.settings())).wheel,'none');
+    assert.equal((await run(()=>drawingTest.settings())).shortcuts.pen,'q');
+    assert.equal(await page.locator('[data-board-tool="secondary"]').isVisible(),false);
+    assert.equal(await run(()=>window.savedBoardPreferences.background),'grid','preferences are persisted through the application callback');
+    await page.locator('canvas').focus();await page.keyboard.press('q');assert.equal((await run(()=>drawingTest.toolState())).tool,'pen');
+    await page.keyboard.press('t');assert.equal(await page.locator('dialog textarea').isVisible(),true);await page.click('dialog button:has-text("Cancelar")');
+    let zoom=await run(()=>drawingTest.state().zoom);await page.mouse.move(400,300);await page.mouse.wheel(0,-120);await page.waitForTimeout(40);assert.equal(await run(()=>drawingTest.state().zoom),zoom,'ignored scroll leaves zoom unchanged');
+    await run(()=>drawingTest.preferences({...drawingTest.settings(),wheel:'zoom'}));
+    await page.mouse.wheel(0,-120);await page.waitForTimeout(50);assert.ok(await run(()=>drawingTest.state().zoom)>zoom,'default wheel zooms');
+    await run(()=>{drawingTest.seed();drawingTest.tool('pen');});await page.locator('canvas').focus();await page.keyboard.down('Space');await drag(300,200,400,250);await page.keyboard.up('Space');
+    assert.equal((await run(()=>drawingTest.state())).objects,1,'Space+drag pans without drawing');
+
+    await page.evaluate(()=>boardSettings.openWhiteboardSettings({host:document.body,getSettings:()=>drawingTest.settings(),setSettings:value=>drawingTest.preferences(value)}));
+    await page.click('button:has-text("Restaurar padrões")');await page.click('button:has-text("Salvar preferências")');
+    assert.equal((await run(()=>drawingTest.settings())).shortcuts.pen,'p');assert.equal((await run(()=>drawingTest.settings())).wheel,'zoom');
+    assert.equal((await run(()=>drawingTest.settings())).recognize,true);assert.deepEqual((await run(()=>drawingTest.settings())).hiddenTools,[]);
+    await run(()=>{drawingTest.choosePen('pen');drawingTest.inkPreferences('#2244aa',6);drawingTest.choosePen('secondary');drawingTest.inkPreferences('#aa2244',10);drawingTest.choosePen('pen');});
+    assert.equal((await run(()=>drawingTest.toolState())).color,'#2244aa');assert.equal((await run(()=>drawingTest.toolState())).size,'6');
+    await run(()=>drawingTest.choosePen('secondary'));
+    assert.equal((await run(()=>drawingTest.toolState())).color,'#aa2244');assert.equal((await run(()=>drawingTest.toolState())).size,'10','second pen keeps independent preferences');
+    await page.click('#note-draw-pen');
+    await page.click('[aria-label="Cor #111827"]');
+    await page.evaluate(()=>{window.savedInputClick=HTMLInputElement.prototype.click;HTMLInputElement.prototype.click=function(){if(this.type==='color')window.colorPickerOpened=true;else savedInputClick.call(this);};});
+    await page.click('[aria-label="Cor #111827"]');
+    assert.equal(await page.evaluate(()=>window.colorPickerOpened),true,'clicking the selected swatch opens its color picker');
+    await page.evaluate(()=>{const input=document.querySelector('.note-color-palette input');input.value='#667788';input.dispatchEvent(new Event('input'));HTMLInputElement.prototype.click=savedInputClick;});
+    assert.equal((await run(()=>drawingTest.settings())).palette[0],'#667788','custom swatch color is saved');
+
+    await page.evaluate(()=>{
+      window.boardCSPViolations=[];document.addEventListener('securitypolicyviolation',event=>boardCSPViolations.push(event.violatedDirective));
+      const meta=document.createElement('meta');meta.httpEquiv='Content-Security-Policy';meta.content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'";document.head.append(meta);
+    });
+    const fileResults=await page.evaluate(async()=>{
+      drawingTest.seed();
+      const png=await new Promise(resolve=>drawingTest.exportCanvas().toBlob(resolve,'image/png'));
+      const image=await boardFiles.loadWhiteboardImage(new File([png],'teste.png',{type:'image/png'}));drawingTest.addImage(image);
+      const pdf=await boardFiles.canvasPDF(drawingTest.exportCanvas());
+      const imported=await boardFiles.loadWhiteboardPDF(new File([pdf],'quadro.pdf',{type:'application/pdf'}));
+      let rejected=false;try{await boardFiles.loadWhiteboardImage(new File(['<svg/>'],'unsafe.svg',{type:'image/svg+xml'}));}catch{rejected=true;}
+      return {mime:pdf.type,header:(await pdf.text()).slice(0,8),width:imported.width,height:imported.height,objects:drawingTest.state().objects,rejected};
+    });
+    assert.equal(fileResults.mime,'application/pdf');assert.equal(fileResults.header,'%PDF-1.4');assert.ok(fileResults.width>0&&fileResults.height>0);assert.equal(fileResults.objects,2);assert.equal(fileResults.rejected,true);
+    const pngData=await page.evaluate(()=>drawingTest.exportCanvas().toDataURL('image/png').split(',')[1]);
+    await page.locator('[data-board-import="image"]').setInputFiles({name:'quadro-teste.png',mimeType:'image/png',buffer:Buffer.from(pngData,'base64')});
+    await page.waitForFunction(()=>drawingTest.state().objects===3);
+    const download=page.waitForEvent('download');await page.click('[aria-label="Salvar como PDF"]');
+    assert.equal((await download).suggestedFilename(),'quadro.pdf');
+    await page.evaluate(()=>{window.chosenPDFPage=drawingTest.choosePDFPage(3);});
+    await page.locator('dialog input[type="number"]').fill('2');await page.click('button:has-text("Adicionar página")');
+    assert.equal(await page.evaluate(()=>window.chosenPDFPage),2,'multi-page PDFs have an explicit page chooser');
+    await page.addStyleTag({content:applicationCSS+'\n'+toolbarCSS});
+    await page.click('[aria-label="Configurações do quadro"]');assert.equal(await page.locator('.note-board-settings').isVisible(),true);
+    await page.screenshot({path:path.join(process.env.TEMP||'/tmp','labmec-board-settings-desktop.png')});
+    await page.setViewportSize({width:390,height:812});
+    const settingsBox=await page.locator('.note-board-settings').boundingBox();assert.ok(settingsBox.x>=0&&settingsBox.width<=390&&settingsBox.height<=812);
+    await page.screenshot({path:path.join(process.env.TEMP||'/tmp','labmec-board-settings-mobile.png')});
+    await page.click('[aria-label="Fechar configurações"]');
+    assert.deepEqual(await page.evaluate(()=>boardCSPViolations),[],'PDF import/export respects the production CSP');
     assert.deepEqual(errors,[]);
-    console.log('PASS: drawing tools, shortcuts, toolbar palette/weight, logo stamp persistence/undo, desktop/tablet/mobile layout');
+    console.log('PASS: legacy drawing, shapes, laser, recognition, lasso/resize, text, custom shortcuts, settings, hide/reopen, mouse/keyboard/touch, image import, PDF round trip, responsive layout');
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
