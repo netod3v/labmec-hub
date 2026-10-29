@@ -2607,7 +2607,7 @@ html:has(#wrap-app:not(.hidden))::-webkit-scrollbar{display:none;width:0;}
 
 #wrap-app>footer{flex-wrap:wrap;gap:12px;}
 #wrap-app>footer .legal-links{flex-basis:100%;padding-top:4px;}
-.cookie-notice{position:fixed;bottom:max(18px,env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);z-index:750;display:flex;align-items:center;gap:20px;width:min(820px,calc(100vw - 32px));max-height:45dvh;overflow:auto;padding:20px 22px;border:1px solid var(--border);border-radius:16px;background:var(--paper);color:var(--ink);box-shadow:0 12px 44px rgba(0,0,0,.2);}
+.cookie-notice{position:fixed;bottom:max(18px,env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);z-index:11000;isolation:isolate;display:flex;align-items:center;gap:20px;width:min(820px,calc(100vw - 32px));max-height:45dvh;overflow:auto;padding:20px 22px;border:1px solid var(--border);border-radius:16px;background:var(--paper);color:var(--ink);box-shadow:0 12px 44px rgba(0,0,0,.2);}
 .cookie-notice[hidden]{display:none;}
 .cookie-notice-copy{flex:1;min-width:0;}
 .cookie-notice strong{font:700 15px 'Space Grotesk',sans-serif;}
