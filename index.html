@@ -4787,7 +4787,7 @@ noteDrawViewport.addEventListener('wheel',event=>{
   if(noteStudioBody.dataset.mode!=='draw')return;event.preventDefault();
   if(noteBoardSettings.wheel==='none')return;
   if(event.shiftKey){const unit=event.deltaMode===1?16:event.deltaMode===2?noteDrawViewport.clientWidth:1;noteDrawViewport.scrollLeft+=(event.deltaX||event.deltaY)*unit;return;}
-  if(noteBoardSettings.wheel==='zoom'||noteModifierHeld(event,noteBoardSettings.shortcuts.zoomModifier))zoomNoteAt(noteDrawZoom*Math.exp(-Math.max(-200,Math.min(200,event.deltaY))*.002),event);
+  if((noteBoardSettings.wheel==='zoom'&&noteDrawTool!=='pan'&&!notePanHeld)||noteModifierHeld(event,noteBoardSettings.shortcuts.zoomModifier))zoomNoteAt(noteDrawZoom*Math.exp(-Math.max(-200,Math.min(200,event.deltaY))*.002),event);
   else {noteDrawViewport.scrollTop+=event.deltaY;noteDrawViewport.scrollLeft+=event.deltaX;}
 },{passive:false});
 

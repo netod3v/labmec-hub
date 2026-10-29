@@ -414,6 +414,14 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     assert.equal(await run(()=>drawingTest.state().zoom),1,'Shift plus wheel leaves zoom unchanged');
     await page.keyboard.down('Shift');await page.mouse.wheel(0,-180);await page.keyboard.up('Shift');await page.waitForTimeout(80);
     assert.equal(await page.locator('canvas').evaluate(el=>el.parentElement.scrollLeft),0,'reverse Shift wheel returns to the left');
+    await run(()=>drawingTest.tool('pan'));
+    await page.mouse.wheel(0,160);await page.waitForTimeout(80);
+    assert.ok(await page.locator('canvas').evaluate(el=>el.parentElement.scrollTop)>0,'Mover plus wheel pans down');
+    assert.equal(await run(()=>drawingTest.state().zoom),1,'Mover wheel does not change zoom');
+    await page.mouse.wheel(0,-160);await page.waitForTimeout(80);
+    assert.equal(await page.locator('canvas').evaluate(el=>el.parentElement.scrollTop),0,'Mover plus reverse wheel pans up');
+    await page.keyboard.down('Control');await page.mouse.wheel(0,-120);await page.keyboard.up('Control');await page.waitForTimeout(80);
+    assert.ok(await run(()=>drawingTest.state().zoom)>1,'zoom modifier still works while Mover is selected');
     console.log('PASS: legacy drawing, shapes, laser, recognition, lasso/resize, text, custom shortcuts, settings, hide/reopen, mouse/keyboard/touch, image import, PDF round trip, responsive layout');
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
