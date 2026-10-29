@@ -190,6 +190,14 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     });
     assert.deepEqual(native,{textPrevented:false,textModePrevented:false,hiddenPrevented:false});
     await run(()=>{drawingTest.seed();drawingTest.initializeBar();});
+    await run(()=>drawingTest.tool('pen'));
+    assert.match(await page.locator('canvas').evaluate(el=>getComputedStyle(el).cursor),/data:image\/svg\+xml/,'drawing uses a circular SVG cursor');
+    await page.keyboard.down('Space');await page.keyboard.up('Space');
+    assert.match(await page.locator('canvas').evaluate(el=>getComputedStyle(el).cursor),/data:image\/svg\+xml/,'releasing pan restores the circular cursor');
+    await run(()=>drawingTest.tool('select'));
+    assert.equal(await page.locator('canvas').evaluate(el=>getComputedStyle(el).cursor),'default');
+    await run(()=>drawingTest.tool('pen'));
+
     assert.equal(await page.locator('.note-toolbar-strip [data-board-tool="crop"]').count(),0,'crop is kept out of the compact primary toolbar');
     assert.equal(await page.locator('.note-drawing-more').isVisible(),false);
     await page.click('[aria-label="Mais ferramentas"]');

@@ -473,7 +473,8 @@ textarea.field:focus{border-color:var(--moss);}
 .note-rich-editor{flex:1;min-height:220px;padding:18px;border:1px solid var(--border);border-radius:12px;background:var(--paper);color:var(--ink);overflow:auto;outline:none;font:400 14px/1.65 Inter,sans-serif;}
 .note-rich-editor:focus{border-color:var(--moss);box-shadow:0 0 0 3px rgba(91,139,99,.12);}
 .note-draw-panel{position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff;}
-.note-draw-viewport{position:absolute;inset:0;overflow:auto;background:#fff;}
+.note-draw-viewport{position:absolute;inset:0;overflow:auto;background:#fff;scrollbar-width:none;-ms-overflow-style:none;}
+.note-draw-viewport::-webkit-scrollbar{display:none;width:0;height:0;}
 #note-draw-canvas{display:block;width:100%;height:100%;background:#fff;cursor:crosshair;touch-action:none;transform-origin:left top;}
 .whiteboard-toolbar,.whiteboard-zoom{position:absolute;z-index:12;display:flex;align-items:center;gap:5px;padding:6px;border:1px solid #ddd;border-radius:11px;background:rgba(255,255,255,.96);box-shadow:0 5px 20px rgba(0,0,0,.14);color:#242424;}
 .note-area-tools{position:absolute;top:12px;left:12px;z-index:2;display:flex;flex-wrap:wrap;gap:5px;max-width:calc(100% - 144px);padding:7px;border:1px solid var(--border);border-radius:10px;background:var(--paper);box-shadow:0 3px 12px #0001;}
@@ -4420,7 +4421,7 @@ function noteResizeSelection(point){
 function noteSelectedByLasso(points){return noteDrawObjects.filter(o=>{const b=noteObjectBounds(o),vertices=o.type==='stroke'?o.points:[{x:b.x1,y:b.y1},{x:b.x2,y:b.y1},{x:b.x2,y:b.y2},{x:b.x1,y:b.y2}];return vertices.length&&vertices.every(p=>pointInLasso(p,points));}).map(o=>o.id);}
 function setNoteBoardPreferences(value){noteBoardSettings=normalizeWhiteboardSettings(value);noteSaveBoardPreferences(noteBoardSettings);if(noteDrawTool==='pen')chooseNotePen(notePenId(),false);noteDrawingToolbar?.refresh();renderNoteDrawing();}
 function notePenId(){return noteInkType.value==='pencil'?'secondary':noteInkType.value==='highlighter'?'highlighter':'pen';}
-function captureNotePen(){const id=notePenId();noteBoardSettings.pens[id]={color:noteDrawColor.value,width:Number(noteDrawSize.value),lineStyle:noteLineStyle};noteSaveBoardPreferences(noteBoardSettings);}
+function captureNotePen(){const id=notePenId();noteBoardSettings.pens[id]={color:noteDrawColor.value,width:Number(noteDrawSize.value),lineStyle:noteLineStyle};noteSaveBoardPreferences(noteBoardSettings);updateNoteDrawingCursor();}
 function chooseNotePen(id,remember=true){
   if(remember)captureNotePen();const preset=noteBoardSettings.pens[id];
   noteInkType.value=id==='secondary'?'pencil':id==='highlighter'?'highlighter':'pen';noteDrawColor.value=preset.color;
@@ -4601,9 +4602,17 @@ function eraseNotePartial(p){
     let part=[];o.points.forEach(q=>{if(Math.hypot(q.x-p.x,q.y-p.y)>radius)part.push(q);else{if(part.length>1)next.push({...o,id:`draw-${Date.now()}-${Math.random()}`,points:part});part=[];}});if(part.length>1)next.push({...o,id:`draw-${Date.now()}-${Math.random()}`,points:part});
   });noteDrawObjects=next;
 }
+function updateNoteDrawingCursor(){
+  if(notePanHeld||noteDrawTool==='pan'){noteDrawCanvas.style.cursor='grab';return;}
+  if(noteDrawTool==='select'){noteDrawCanvas.style.cursor='default';return;}
+  const width=Number(noteDrawSize.value)||5;
+  const radius=Math.max(3,Math.min(24,(noteDrawTool==='eraser'?Math.max(10,width*2):width/2)*noteDrawZoom));
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="${radius}" fill="none" stroke="white" stroke-width="3"/><circle cx="32" cy="32" r="${radius}" fill="none" stroke="black" stroke-width="1"/></svg>`;
+  noteDrawCanvas.style.cursor=`url("data:image/svg+xml,${encodeURIComponent(svg)}") 32 32, crosshair`;
+}
 function applyNoteDrawZoom(){
   noteDrawCanvas.style.width=(noteDrawCanvas.width*noteDrawZoom)+'px';noteDrawCanvas.style.height=(noteDrawCanvas.height*noteDrawZoom)+'px';
-  noteZoomLabel.textContent=Math.round(noteDrawZoom*100)+'%';
+  noteZoomLabel.textContent=Math.round(noteDrawZoom*100)+'%';updateNoteDrawingCursor();
 }
 function renderNoteStudio(){
   const tab = getActiveTab();
@@ -4766,7 +4775,7 @@ noteDrawViewport.addEventListener('wheel',event=>{
   else {noteDrawViewport.scrollTop+=event.deltaY;noteDrawViewport.scrollLeft+=event.deltaX;}
 },{passive:false});
 
-function selectNoteDrawTool(tool){clearTimeout(noteRecognitionTimer);noteLassoPoints=[];noteSelectedIds.clear();clearNoteArea();noteSelectedObjectId=null;noteDrawTool=tool;updateNoteAreaTools();renderNoteDrawing();noteDrawPen.classList.toggle('active',tool==='pen');noteDrawEraser.classList.toggle('active',tool==='eraser');noteDrawPan.classList.toggle('active',tool==='pan');noteDrawSelect.classList.toggle('active',tool==='select');noteDrawCanvas.style.cursor=tool==='pan'?'grab':tool==='select'?'default':tool==='eraser'?'cell':'crosshair';noteDrawingToolbar?.refresh();}
+function selectNoteDrawTool(tool){clearTimeout(noteRecognitionTimer);noteLassoPoints=[];noteSelectedIds.clear();clearNoteArea();noteSelectedObjectId=null;noteDrawTool=tool;updateNoteAreaTools();renderNoteDrawing();noteDrawPen.classList.toggle('active',tool==='pen');noteDrawEraser.classList.toggle('active',tool==='eraser');noteDrawPan.classList.toggle('active',tool==='pan');noteDrawSelect.classList.toggle('active',tool==='select');updateNoteDrawingCursor();noteDrawingToolbar?.refresh();}
 noteDrawPen.addEventListener('click',()=>{noteShapeTool.value='none';selectNoteDrawTool('pen');});
 noteDrawEraser.addEventListener('click',()=>selectNoteDrawTool('eraser'));
 noteDrawPan.addEventListener('click',()=>selectNoteDrawTool('pan'));
@@ -4833,7 +4842,7 @@ noteStudioModal.addEventListener('keydown',event=>{
   else if(action==='eraser')selectNoteDrawTool('eraser');else if(action==='text')editNoteText();
   else noteAreaTools.querySelector('[data-area-action="'+action+'"]').click();
 });
-noteStudioModal.addEventListener('keyup',event=>{noteHeldKeys.delete(whiteboardKey(event));if(whiteboardKey(event)===noteBoardSettings.shortcuts.pan){notePanHeld=false;noteDrawCanvas.style.cursor=noteDrawTool==='pan'?'grab':'crosshair';}});
+noteStudioModal.addEventListener('keyup',event=>{noteHeldKeys.delete(whiteboardKey(event));if(whiteboardKey(event)===noteBoardSettings.shortcuts.pan){notePanHeld=false;updateNoteDrawingCursor();}});
 window.addEventListener('blur',()=>{noteHeldKeys.clear();notePanHeld=false;});
 noteDrawColor.addEventListener('input',captureNotePen);noteDrawSize.addEventListener('change',captureNotePen);
 noteDrawClear.addEventListener('click',()=>{pushNoteDrawingHistory();noteDrawObjects=[];noteSelectedIds.clear();noteSelectedObjectId=null;noteLegacyImage=null;clearNoteArea();const tab=getActiveTab();if(tab)delete tab.drawing;saveNoteDrawing();});
