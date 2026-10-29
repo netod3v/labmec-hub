@@ -1,7 +1,8 @@
 # Recuperação por código — 29/10/2026
 
-O botão **Esqueceu a senha?** solicita um código de seis dígitos e abre a
-tela de verificação. A pessoa informa e-mail e código; somente após a validação
+O botão **Esqueceu a senha?** solicita um código de seis dígitos e mostra a
+verificação no próprio card de entrada/cadastro. O e-mail informado inicialmente
+fica em memória; a pessoa digita somente o código. Após a validação
 aparecem os campos de nova senha e confirmação. O e-mail contém o código,
 sem link secreto. A senha não muda apenas ao solicitar ou validar o código.
 
@@ -9,8 +10,9 @@ sem link secreto. A senha não muda apenas ao solicitar ou validar o código.
   cinco tentativas, registradas no banco. A quinta tentativa correta é aceita.
 - A validação consome o código e emite autorização de cinco minutos para
   definir a senha. Essa autorização fica somente na memória da página.
-- Atualizar a página após validar exige solicitar outro código. Antes de validar,
-  é possível digitar o e-mail novamente e usar o código ainda válido.
+- Atualizar a página ou voltar para entrar encerra o fluxo em memória. O próximo
+  pedido começa pelo e-mail no formulário de entrada. A rota antiga
+  `/reset-password` redireciona para essa mesma tela.
 - O envio continua pela fila e pelo cron já configurados. Retentativas SMTP
   reutilizam o código e o prazo originais; não renovam o limite de tentativas.
 - Um novo pedido após o envio anterior gera outro código e substitui o desafio

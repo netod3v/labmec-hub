@@ -2697,6 +2697,27 @@ body.site-policy-open{overflow:hidden!important;}
       <button class="btn btn-primary" type="submit" id="login-submit">Entrar</button>
       <div class="login-error" id="login-error"></div>
     </form>
+    <section id="auth-recovery" class="auth-recovery" aria-labelledby="recovery-title" hidden>
+      <span class="recovery-progress" id="recovery-progress">Etapa 1 de 2 · Verificação</span>
+      <h2 id="recovery-title">Verifique seu e-mail</h2>
+      <p id="recovery-description">Digite o código recebido. Ele vale por 10 minutos. Confira também o spam.</p>
+      <form id="recovery-code-form">
+        <label for="recovery-code">Código de verificação</label>
+        <input class="field" id="recovery-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required>
+        <button class="btn btn-primary" id="recovery-verify" type="submit">Verificar código</button>
+        <button class="btn recovery-secondary" id="recovery-resend" type="button">Enviar novo código</button>
+      </form>
+      <form id="recovery-password-form" hidden>
+        <label for="recovery-password">Nova senha</label>
+        <input class="field" id="recovery-password" type="password" autocomplete="new-password" minlength="12" maxlength="256" placeholder="Pelo menos 12 caracteres" required>
+        <label for="recovery-confirmation">Confirmar nova senha</label>
+        <input class="field" id="recovery-confirmation" type="password" autocomplete="new-password" minlength="12" maxlength="256" placeholder="Digite a senha novamente" required>
+        <label class="recovery-show"><input id="recovery-show-password" type="checkbox"> Mostrar senhas</label>
+        <button class="btn btn-primary" id="recovery-save" type="submit">Salvar nova senha</button>
+      </form>
+      <p id="recovery-status" role="status" aria-live="polite"></p>
+      <button class="recovery-back" id="recovery-back" type="button">← Voltar para entrar</button>
+    </section>
     <button class="login-toggle" id="login-toggle" type="button">Ainda não tem conta? Criar conta</button>
     <p class="site-authorship"><span>Equipe Plantel Labs</span>Desenvolvido por <a href="https://www.linkedin.com/in/pedro-neto-b1908433b" target="_blank" rel="noopener noreferrer"><strong>Pedro Neto</strong></a>.</p>
     <nav class="legal-links login-legal-links" aria-label="Políticas e termos"><a href="#privacidade" data-policy="privacy">Política de Privacidade</a><a href="#termos" data-policy="terms">Termos de Uso</a><a href="#cookies" data-policy="cookies">Política de Cookies</a></nav>
@@ -3420,6 +3441,7 @@ body.site-policy-open{overflow:hidden!important;}
   <div class="search-panel-footer"><span>Somente conteúdos que você pode acessar</span><span><kbd>Esc</kbd> fechar <kbd>Ctrl K</kbd> pesquisar</span></div>
 </section>
 <link rel="stylesheet" href="assets/donation-pix.css">
+<link rel="stylesheet" href="assets/auth-recovery.css">
 <link rel="stylesheet" href="assets/notifications-page.css?v=20261020-4">
 <link rel="stylesheet" href="assets/contact-nickname.css">
 <link rel="stylesheet" href="assets/message-menu.css">
@@ -3437,6 +3459,7 @@ import {
   onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
   signOut, sendPasswordResetEmail, initializeFilesPanel, changeDemandLifecycle
 } from './assets/lab-api.js';
+import { initializeAuthRecovery } from './assets/auth-recovery.js';
 import { createAttachmentComposer, renderPostAttachments, preservePostVideos } from './assets/post-attachments.js';
 import { editProfilePhoto } from './assets/photo-editor.js';
 import { initializePageScrollbar } from './assets/page-scrollbar.js';
@@ -4102,10 +4125,14 @@ function showForgotPasswordMsg(text, isError, kind){
   forgotPasswordMsg.classList.toggle('is-error', !!isError);
   forgotPasswordMsg.classList.add('show');
 }
+const authRecovery = initializeAuthRecovery({
+  onClose: () => setLoginMode('login'),
+  onSuccess: message => showForgotPasswordMsg(message, false),
+});
 forgotPasswordLink.addEventListener('click', ()=>{
   const email = document.getElementById('login-email').value.trim();
   loginError.classList.remove('show');
-  if(!email){
+  if(!email || !document.getElementById('login-email').reportValidity()){
     showForgotPasswordMsg('Digita seu e-mail ali em cima primeiro.', true);
     document.getElementById('login-email').focus();
     return;
@@ -4113,10 +4140,7 @@ forgotPasswordLink.addEventListener('click', ()=>{
   forgotPasswordLink.disabled = true;
   showForgotPasswordMsg('Enviando...', false, 'pending');
   sendPasswordResetEmail(auth, email)
-    .then(()=>{
-      try { sessionStorage.setItem('hub-reset-email', email); } catch {}
-      location.assign('/reset-password');
-    })
+    .then(()=>authRecovery.start(email))
     .catch(err=>showForgotPasswordMsg(err.message, true))
     .finally(()=>{ forgotPasswordLink.disabled = false; });
 });

@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 import click
 import psycopg
 from dotenv import load_dotenv
-from flask import Flask, Response, g, jsonify, request, send_file, send_from_directory, session
+from flask import Flask, Response, g, jsonify, redirect, request, send_file, send_from_directory, session
 from .messages import visible_document
 from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound, TooManyRequests, RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -284,7 +284,7 @@ def create_app(settings=None, database=None, *, application=None):
 
     @app.get('/reset-password')
     def password_reset_page():
-        response = send_from_directory(ROOT / 'assets', 'password-reset.html')
+        response = redirect('/')
         response.headers['Cache-Control'] = 'no-store'
         response.headers['Referrer-Policy'] = 'no-referrer'
         response.headers['Content-Security-Policy'] = content_security_policy()

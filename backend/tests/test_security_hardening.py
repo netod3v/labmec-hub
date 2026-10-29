@@ -56,6 +56,8 @@ class SecurityHardeningTests(unittest.TestCase):
 
     def test_reset_page_and_api_have_their_own_policies(self):
         page = self.client.get('/reset-password')
+        self.assertEqual(page.status_code, 302)
+        self.assertEqual(page.headers['Location'], '/')
         self.assertNotIn('nonce-', page.headers['Content-Security-Policy'])
         self.assertNotIn('unsafe-inline', re.search(r'script-src ([^;]+)', page.headers['Content-Security-Policy']).group(1))
         api = self.client.get('/api/session')
