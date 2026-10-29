@@ -376,6 +376,9 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     await page.getByRole('button',{name:'Quadriculado',exact:true}).click();
     await page.locator('[aria-label="Cor das linhas"]').fill('#556677');
     await page.click('[role="tab"]:has-text("Comportamento")');
+    const recognitionSwitch=page.getByRole('switch',{name:'Reconhecimento de forma',exact:true});
+    await recognitionSwitch.uncheck();assert.equal(await recognitionSwitch.isChecked(),false);await recognitionSwitch.check();
+
     await page.locator('label').filter({hasText:'Ignorar o scroll'}).locator('input').check();
     await page.click('[role="tab"]:has-text("Ferramentas")');
     await page.locator('.note-board-tool-list label').filter({hasText:'Caneta 2'}).locator('input').uncheck();
@@ -438,6 +441,12 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     await page.addStyleTag({content:applicationCSS+'\n'+toolbarCSS});
     await page.click('[aria-label="Configurações do quadro"]');assert.equal(await page.locator('.note-board-settings').isVisible(),true);
     await page.screenshot({path:path.join(process.env.TEMP||'/tmp','labmec-board-settings-desktop.png')});
+    for(const tab of ['Comportamento','Ferramentas','Atalhos']){
+      await page.getByRole('tab',{name:tab,exact:true}).click();
+      assert.ok(await page.locator('.note-board-settings-content').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'settings tab fits without horizontal overflow: '+tab);
+      await page.screenshot({path:path.join(process.env.TEMP||'/tmp','labmec-settings-'+tab+'.png')});
+    }
+
     await page.setViewportSize({width:390,height:812});
     const settingsBox=await page.locator('.note-board-settings').boundingBox();assert.ok(settingsBox.x>=0&&settingsBox.width<=390&&settingsBox.height<=812);
     await page.screenshot({path:path.join(process.env.TEMP||'/tmp','labmec-board-settings-mobile.png')});

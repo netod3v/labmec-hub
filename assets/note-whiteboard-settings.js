@@ -1,3 +1,4 @@
+import {whiteboardToolIcon} from './note-drawing-toolbar.js';
 import {WHITEBOARD_TOOLS,WHITEBOARD_SHORTCUTS,defaultWhiteboardSettings,normalizeWhiteboardSettings,whiteboardKey} from './note-whiteboard-model.js';
 
 export function openWhiteboardSettings({host,getSettings,setSettings}) {
@@ -34,18 +35,32 @@ export function openWhiteboardSettings({host,getSettings,setSettings}) {
       if(draft.background==='grid')colorField('Cor das linhas','gridColor');
       if(draft.background==='dots')colorField('Cor dos pontinhos','dotsColor');
     }else if(id==='behavior'){
-      const recognition=section('Reconhecimento de formas · Ink to Shape');checkbox(recognition,'Reconhecer formas ao segurar o traço parado por meio segundo',draft.recognize,value=>draft.recognize=value);
-      for(const [key,label] of [['ellipse','Círculo'],['rect','Retângulo'],['triangle','Triângulo'],['line','Linha reta']])checkbox(recognition,label,draft.recognizeTypes.includes(key),value=>{draft.recognizeTypes=draft.recognizeTypes.filter(x=>x!==key);if(value)draft.recognizeTypes.push(key);});
-      const explanation=document.createElement('p');explanation.textContent='Linhas quase retas também são alinhadas ao soltar a caneta. Segure o atalho de linha reta para desenhar uma linha manualmente.';recognition.append(explanation);
-      const scroll=section('Rolagem do mouse');for(const [value,label] of [['none','Ignorar o scroll dentro do quadro'],['pan','Mover o quadro para cima e para baixo · '+draft.shortcuts.zoomModifier+' + scroll dá zoom'],['zoom','Aplicar zoom diretamente com o scroll']]){const row=document.createElement('label');row.className='note-board-check';const input=document.createElement('input');input.type='radio';input.name='wheel';input.value=value;input.checked=draft.wheel===value;input.onchange=()=>draft.wheel=value;row.append(input,document.createTextNode(label));scroll.append(row);}
+      const recognition=section('Reconhecimento de forma');
+      const toggle=checkbox(recognition,'',draft.recognize,value=>draft.recognize=value);toggle.setAttribute('role','switch');toggle.setAttribute('aria-label','Reconhecimento de forma');toggle.parentElement.classList.add('note-recognition-switch');
+      const description=document.createElement('span');description.innerHTML='<strong>Reconhecimento de forma (ink-to-shape)</strong><small>Ao desenhar algo parecido com uma das formas abaixo e segurar o clique parado por meio segundo, o tra\u00e7o vira a forma reconhecida. Linhas quase retas tamb\u00e9m ficam retas ao soltar a caneta.</small>';toggle.parentElement.prepend(description);
+      const pills=document.createElement('div');pills.className='note-recognition-types';pills.append('Reconhecer:');recognition.append(pills);
+      for(const [key,label] of [['ellipse','C\u00edrculo'],['rect','Ret\u00e2ngulo'],['triangle','Tri\u00e2ngulo'],['line','Linha reta']]){
+        const input=checkbox(pills,label,draft.recognizeTypes.includes(key),value=>{draft.recognizeTypes=draft.recognizeTypes.filter(x=>x!==key);if(value)draft.recognizeTypes.push(key);});
+        const icon=document.createElement('span');icon.className='note-setting-icon';icon.innerHTML=whiteboardToolIcon(key);input.after(icon);
+      }
+      const scroll=section('Comportamento do scroll do mouse');
+      for(const [value,title,description] of [['none','N\u00e3o faz nada','Ignorar o scroll dentro do quadro.'],['pan','Move o quadro pra cima/baixo','Scroll vira movimento vertical. Para zoom, use '+draft.shortcuts.zoomModifier+' + scroll. Com Mover selecionado, o scroll aplica zoom.'],['zoom','D\u00e1 zoom in e out','Scroll do mouse aplica zoom direto, sem precisar de modificador.']]){
+        const row=document.createElement('label');row.className='note-board-check note-scroll-choice';const input=document.createElement('input');input.type='radio';input.name='wheel';input.value=value;input.checked=draft.wheel===value;input.onchange=()=>draft.wheel=value;
+        const text=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('small');strong.textContent=title;small.textContent=description;text.append(strong,small);row.append(input,text);scroll.append(row);
+      }
     }else if(id==='tools'){
       const tools=section('Ferramentas visíveis');const info=document.createElement('p');info.textContent='Desmarque as ferramentas que você prefere ocultar. Configurações e o botão de reabrir a barra permanecem acessíveis.';tools.append(info);
       const list=document.createElement('div');list.className='note-board-tool-list';tools.append(list);
-      for(const [key,label] of WHITEBOARD_TOOLS)checkbox(list,label,!draft.hiddenTools.includes(key),value=>{draft.hiddenTools=draft.hiddenTools.filter(x=>x!==key);if(!value)draft.hiddenTools.push(key);});
+      for(const [key,label] of WHITEBOARD_TOOLS){const input=checkbox(list,label,!draft.hiddenTools.includes(key),value=>{draft.hiddenTools=draft.hiddenTools.filter(x=>x!==key);if(!value)draft.hiddenTools.push(key);});const icon=document.createElement('span');icon.className='note-setting-icon';icon.innerHTML=whiteboardToolIcon(key);input.after(icon);}
     }else{
-      const keys=section('Atalhos de teclado');
-      for(const [id,label] of WHITEBOARD_SHORTCUTS){const row=document.createElement('div');row.className='note-board-shortcut';const title=document.createElement('span');title.textContent=label;const value=document.createElement('kbd');value.textContent=draft.shortcuts[id];const edit=document.createElement('button');edit.type='button';edit.textContent='Editar';edit.setAttribute('aria-label','Editar atalho: '+label);edit.onclick=()=>{editing=id;modifier=null;message.textContent='Pressione o novo atalho para '+label.toLowerCase()+'. Esc cancela.';edit.focus();};row.append(title,value,edit);keys.append(row);}
+      const keys=section('Teclas de atalho');const help=document.createElement('p');help.textContent='Clique em Editar e pressione a combina\u00e7\u00e3o desejada. Use Esc para cancelar.';keys.append(help);
+      const descriptions={pan:'Segure a tecla para mover o quadro ao arrastar.',zoomModifier:'Modificador + scroll aplica zoom.',straight:'Segure enquanto desenha para transformar o tra\u00e7o em linha reta.',undo:'Volta o \u00faltimo tra\u00e7o ou forma desenhada.',redo:'Recupera a \u00faltima a\u00e7\u00e3o desfeita.',delete:'Remove os itens selecionados.',pen:'Atalho para ativar a caneta prim\u00e1ria.',secondary:'Atalho para ativar a caneta secund\u00e1ria.',eraser:'Atalho para ativar a borracha.',text:'Cria uma caixa no centro do quadro e abre para digitar.'};
+      const displayKey=value=>value==='Space'?'Espa\u00e7o':value==='Control'?'Ctrl':value.replace(/\+/g,' + ');
+
+      for(const [id,label] of WHITEBOARD_SHORTCUTS){const row=document.createElement('div');row.className='note-board-shortcut';const title=document.createElement('span');title.textContent=label;const detail=document.createElement('small');detail.textContent=descriptions[id];title.append(detail);const value=document.createElement('kbd');value.textContent=displayKey(draft.shortcuts[id]);const edit=document.createElement('button');edit.type='button';edit.textContent='Editar';edit.setAttribute('aria-label','Editar atalho: '+label);edit.onclick=()=>{editing=id;modifier=null;message.textContent='Pressione o novo atalho para '+label.toLowerCase()+'. Esc cancela.';edit.focus();};row.append(title,value,edit);keys.append(row);}
       for(const [label,value] of [['Copiar seleção','Ctrl+C · fixo'],['Colar seleção','Ctrl+V · fixo'],['Cancelar seleção','Esc · fixo']]){const row=document.createElement('div');row.className='note-board-shortcut';const title=document.createElement('span');title.textContent=label;const key=document.createElement('kbd');key.textContent=value;row.append(title,key);keys.append(row);}
+      const multi=document.createElement('div');multi.className='note-board-shortcut';const title=document.createElement('span');title.textContent='Selecionar v\u00e1rios';const detail=document.createElement('small');detail.textContent='Com a ferramenta de sele\u00e7\u00e3o, segure Shift e clique para adicionar ou retirar itens.';title.append(detail);const key=document.createElement('kbd');key.textContent='Shift + Clique';multi.append(title,key);keys.append(multi);
+      for(const row of keys.querySelectorAll('.note-board-shortcut'))if(!row.querySelector('button')){const fixed=document.createElement('span');fixed.className='note-shortcut-fixed';fixed.textContent='Fixo';row.append(fixed);}
     }
   }
   function capture(key){

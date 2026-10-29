@@ -22,6 +22,13 @@ const solidIcons={
   sphere:['M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0M2 12a10 2 0 0 0 20 0M12 2a2 10 0 0 0 0 20','M2 12a10 2 0 0 1 20 0M12 2a2 10 0 0 1 0 20']
 };
 
+export function whiteboardToolIcon(id){
+  if(id==='stamp')return '<img src="assets/labiomec-logo-transparent.png" alt="" draggable="false">';
+  const aliases={pen:'pencil',secondary:'pencil',highlighter:'marker',importPdf:'file',pdf:'file'};
+  const extra={eraser:'M7 17l-3-3 8-8 6 6-5 5H7M10 17h9',pan:'M12 2v20M2 12h20M8 6l4-4 4 4M8 18l4 4 4-4M6 8l-4 4 4 4M18 8l4 4-4 4',zoom:'M16 16l5 5M10 6v8M6 10h8M17 10a7 7 0 1 1-14 0 7 7 0 1 1 14 0',undo:'M8 4 3 9l5 5M3 9h11a6 6 0 0 1 0 12',redo:'M16 4l5 5-5 5M21 9H10a6 6 0 0 0 0 12',clear:'M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13'};
+  const paths=solidIcons[id];return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+(paths?.[0]||icons[aliases[id]||id]||extra[id]||icons.file)+'"/>'+(paths?'<path d="'+paths[1]+'" stroke-dasharray="2 2"/>':'')+'</svg>';
+}
+
 export function initializeDrawingToolbar(options) {
   const {toolbar,areaTools,pen,eraser,pan,select,color,size,ink,eraserMode,shape,undo,redo,clear,zoomIn,zoomOut,zoomLabel,getState,setTool,stamp,close}=options;
   const panel=toolbar.parentElement;
