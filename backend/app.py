@@ -6,6 +6,7 @@ import re
 import secrets
 import shutil
 import time
+import tempfile
 from datetime import timedelta
 from functools import lru_cache
 from pathlib import Path
@@ -22,6 +23,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
+from .object_storage import SupabaseFileStorage
 from .database import Database
 from .passwords import validate_password
 from .password_reset import register_password_reset
@@ -71,19 +73,26 @@ def dummy_password_hash():
 
 
 def create_app(settings=None, database=None):
-    load_dotenv(ROOT / '.env')
+    env_file = os.environ.get('HUB_ENV_FILE', '.env')
+    load_dotenv(ROOT / env_file)
+    on_vercel = os.environ.get('VERCEL') == '1'
+    cloud_files = os.environ.get('STORAGE_BACKEND', 'supabase' if on_vercel else 'local') == 'supabase'
     app = Flask(__name__, static_folder=None)
     app.config.update(
         SECRET_KEY=os.environ.get('SECRET_KEY'),
         DATABASE_URL=os.environ.get('DATABASE_URL'),
-        STORAGE_DIR=os.environ.get('STORAGE_DIR', str(ROOT / 'var' / 'files')),
-        MAX_CONTENT_LENGTH=int(os.environ.get('MAX_UPLOAD_MB', '2048')) * 1024 * 1024,
-        STORAGE_LIMIT_BYTES=int(os.environ.get('STORAGE_LIMIT_GB', '100')) * 1024**3,
+        STORAGE_DIR=os.environ.get('STORAGE_DIR', str(Path(tempfile.gettempdir()) / 'labiomec-files') if on_vercel or cloud_files else str(ROOT / 'var' / 'files')),
+        STORAGE_BACKEND=os.environ.get('STORAGE_BACKEND', 'supabase' if on_vercel else 'local'),
+        SUPABASE_URL=os.environ.get('SUPABASE_URL', ''),
+        SUPABASE_SECRET_KEY=os.environ.get('SUPABASE_SECRET_KEY', ''),
+        SUPABASE_STORAGE_BUCKET=os.environ.get('SUPABASE_STORAGE_BUCKET', 'hub-files'),
+        MAX_CONTENT_LENGTH=int(os.environ.get('MAX_UPLOAD_MB', '4' if on_vercel else '2048')) * 1024 * 1024,
+        STORAGE_LIMIT_BYTES=int(os.environ.get('STORAGE_LIMIT_GB', '1' if on_vercel else '100')) * 1024**3,
         POST_ATTACHMENT_MAX_BYTES=int(os.environ.get('POST_ATTACHMENT_MAX_MB', '250')) * 1024**2,
         SESSION_COOKIE_NAME='labiomec_session',
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE='Lax',
-        SESSION_COOKIE_SECURE=os.environ.get('COOKIE_SECURE', 'false').lower() == 'true',
+        SESSION_COOKIE_SECURE=os.environ.get('COOKIE_SECURE', 'true' if on_vercel else 'false').lower() == 'true',
         PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
         TRUSTED_PROXY_COUNT=int(os.environ.get('TRUSTED_PROXY_COUNT', '0')),
         UPLOADS_PER_HOUR=int(os.environ.get('UPLOADS_PER_HOUR', '200')),
@@ -128,6 +137,15 @@ def create_app(settings=None, database=None):
     app.database = database or Database(app.config['DATABASE_URL'])
     storage = Path(app.config['STORAGE_DIR']).resolve()
     storage.mkdir(parents=True, exist_ok=True)
+    backend = app.config['STORAGE_BACKEND']
+    if backend not in {'local', 'supabase'}:
+        raise RuntimeError('STORAGE_BACKEND deve ser local ou supabase.')
+    if on_vercel and backend != 'supabase':
+        raise RuntimeError('Na Vercel, use armazenamento persistente Supabase, nunca disco local.')
+    object_storage = SupabaseFileStorage(app.config['SUPABASE_URL'], app.config['SUPABASE_SECRET_KEY'],
+                                        app.config['SUPABASE_STORAGE_BUCKET']) if backend == 'supabase' else None
+    app.object_storage = object_storage
+
 
     @app.before_request
     def protect_request():
@@ -659,6 +677,7 @@ def create_app(settings=None, database=None):
         require(not unit or unit in units(g.user) or is_admin(g.user))
         file_id = uuid4().hex
         temporary, destination = storage / (file_id + '.part'), storage / file_id
+        remote_attempted = False
         try:
             # Copia em blocos: o arquivo inteiro nunca é carregado na RAM.
             with temporary.open('xb') as output:
@@ -678,11 +697,20 @@ def create_app(settings=None, database=None):
                 record = dict(id=file_id, owner_id=g.user['id'], name=name,
                               project=request.form.get('project', '').strip()[:120], unit=unit, size=size,
                               mime_type=mime_type, purpose=purpose)
-                temporary.replace(destination)
+                if object_storage:
+                    remote_attempted = True
+                    object_storage.upload(file_id, temporary, mime_type)
+                else:
+                    temporary.replace(destination)
                 repository.add_file(record)
             return jsonify(file=record), 201
         except Exception:
             destination.unlink(missing_ok=True)
+            if object_storage and remote_attempted:
+                try:
+                    object_storage.delete(file_id)
+                except Exception:
+                    app.logger.error('Falha ao limpar um upload incompleto; revisar armazenamento.')
             raise
         finally:
             temporary.unlink(missing_ok=True)
@@ -711,6 +739,8 @@ def create_app(settings=None, database=None):
                 return jsonify(ok=True)
             if request.method == 'DELETE':
                 require(record['owner_id'] == g.user['id'] or is_admin(g.user))
+                if object_storage:
+                    object_storage.delete(file_id)
                 repository.delete_file(file_id)
                 if is_admin(g.user):
                     audit(repository, g.user, 'file.deleted', file_id, record['name'])
@@ -718,11 +748,24 @@ def create_app(settings=None, database=None):
         if request.method == 'DELETE':
             location.unlink(missing_ok=True)
             return jsonify(ok=True)
+        if object_storage:
+            location = storage / (uuid4().hex + '.download')
+            object_storage.download(file_id, location, record['size'])
         if not location.is_file():
             raise NotFound('Arquivo não encontrado no disco. Contate a administração.')
         inline = request.args.get('inline') == '1' and record.get('mime_type') in INLINE_TYPES
-        response = send_file(location, as_attachment=not inline, download_name=record['name'],
-                             mimetype=record.get('mime_type') if inline else 'application/octet-stream', conditional=True)
+        try:
+            response = send_file(location, as_attachment=not inline, download_name=record['name'],
+                                 mimetype=record.get('mime_type') if inline else 'application/octet-stream', conditional=True,
+                                 etag=file_id if object_storage else True)
+        except Exception:
+            if object_storage:
+                location.unlink(missing_ok=True)
+            raise
+        if object_storage:
+            # Close the WSGI file wrapper before removing the request-local copy.
+            response.direct_passthrough = False
+            response.call_on_close(lambda: location.unlink(missing_ok=True))
         if inline:
             response.headers['Content-Security-Policy'] = (
                 "default-src 'none'; frame-ancestors 'self'" if record['mime_type'] == 'application/pdf'
