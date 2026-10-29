@@ -413,6 +413,24 @@ def create_app(settings=None, database=None, *, application=None):
             raise BadRequest('Caminho inválido.')
         return parts
 
+    def hidden_directory_ids(repository):
+        if is_admin(g.user):
+            return set()
+        return {row['id'] for row in repository.users()
+                if row['id'] != g.user['id'] and row['profile'].get('isAdmin') is True
+                and row['profile'].get('directoryHidden') is True}
+
+    def directory_profiles(repository):
+        hidden = hidden_directory_ids(repository)
+        return {row['id']: public_profile(row['profile']) for row in repository.users()
+                if not row['profile'].get('isRemoved') and row['id'] not in hidden}
+
+    def directory_presence(repository, records):
+        hidden = hidden_directory_ids(repository)
+        now = milliseconds()
+        return {key: dict(value, online=bool(value.get('online') and now - value.get('lastSeen', 0) < 90000))
+                for key, value in records.items() if key not in hidden}
+
     @app.post('/api/sync')
     def sync():
         """Atualiza todos os painéis em uma requisição, sem conexões por painel."""
@@ -431,14 +449,12 @@ def create_app(settings=None, database=None, *, application=None):
                     raise NotFound()
                 if collection not in collections:
                     if collection == 'users':
-                        records = {row['id']: public_profile(row['profile']) for row in repository.users() if not row['profile'].get('isRemoved')}
+                        records = directory_profiles(repository)
                     else:
                         records = {row['id']: visible_document(collection, row['data'], g.user) for row in repository.documents(collection)
                                    if can_read(g.user, collection, row['id'], row['data'])}
                     if collection == 'presence':
-                        now = milliseconds()
-                        records = {key: dict(value, online=bool(value.get('online') and now - value.get('lastSeen', 0) < 90000))
-                                   for key, value in records.items()}
+                        records = directory_presence(repository, records)
                     collections[collection] = records
                 result[path] = at_path(collections[collection], parts[1:]) or None
         return jsonify(data=result)
@@ -456,7 +472,7 @@ def create_app(settings=None, database=None, *, application=None):
         with app.database.transaction() as repository:
             if collection == 'users':
                 if request.method == 'GET':
-                    profiles = {row['id']: public_profile(row['profile']) for row in repository.users() if not row['profile'].get('isRemoved')}
+                    profiles = directory_profiles(repository)
                     return jsonify(data=at_path(profiles, parts[1:]))
                 require(request.method == 'PATCH', 'Perfis só podem ser atualizados.')
                 target = repository.user(parts[1])
@@ -479,9 +495,7 @@ def create_app(settings=None, database=None, *, application=None):
                 records = {row['id']: visible_document(collection, row['data'], g.user) for row in repository.documents(collection)
                            if can_read(g.user, collection, row['id'], row['data'])}
                 if collection == 'presence':
-                    now = milliseconds()
-                    records = {key: dict(value, online=bool(value.get('online') and now - value.get('lastSeen', 0) < 90000))
-                               for key, value in records.items()}
+                    records = directory_presence(repository, records)
                 return jsonify(data=records or None)
             document_id = parts[1]
             if request.method != 'GET':
@@ -489,6 +503,8 @@ def create_app(settings=None, database=None, *, application=None):
             old = repository.document(collection, document_id)
             require(can_read(g.user, collection, document_id, old))
             if request.method == 'GET':
+                if collection == 'presence' and document_id in hidden_directory_ids(repository):
+                    return jsonify(data=None)
                 return jsonify(data=at_path(visible_document(collection, old, g.user), parts[2:]))
             new = apply_change(old, parts[2:])
             if collection == 'presence' and new is not None:
