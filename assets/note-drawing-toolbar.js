@@ -44,7 +44,13 @@ export function initializeDrawingToolbar(options) {
     button.onclick=()=>{options.setLineStyle(value);refresh();};styles.append(button);styleButtons.push([button,value]);
   }
   popup.append(styles);
-  const eraserLabel=document.createElement('label');eraserLabel.className='note-eraser-setting';eraserLabel.append('Borracha',eraserMode);popup.append(eraserLabel);
+  const eraserOptions=document.createElement('div');eraserOptions.className='note-eraser-options';eraserOptions.setAttribute('role','group');eraserOptions.setAttribute('aria-label','Modo da borracha');
+  const eraserButtons=[];
+  for(const [value,label] of [['partial','Pixel'],['stroke','Tra\u00e7o']]){
+    const item=document.createElement('button');item.type='button';item.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17l-3-3 8-8a2 2 0 0 1 3 0l3 3a2 2 0 0 1 0 3l-5 5H7zM10 17h9"/></svg>';
+    item.append(document.createTextNode(label));item.onclick=()=>{eraserMode.value=value;eraserMode.dispatchEvent(new Event('change',{bubbles:true}));refresh();};eraserOptions.append(item);eraserButtons.push([item,value]);
+  }
+  popup.prepend(eraserOptions);
   function group(){const element=document.createElement('div');element.className='note-tool-group';strip.append(element);return element;}
   function track(element,id){element.dataset.boardTool=id;return element;}
   function button(parent,label,icon,action){const item=document.createElement('button');item.type='button';item.className='whiteboard-tool';item.title=label;item.setAttribute('aria-label',label);item.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+icon+'"/></svg>';item.onclick=action;parent.append(item);return item;}
@@ -56,7 +62,7 @@ export function initializeDrawingToolbar(options) {
   const laser=track(button(drawing,'Caneta laser · apresentação',icons.laser,()=>{setTool('laser');popup.hidden=true;refresh();}),'laser');
   drawing.append(track(eraser,'eraser'));eraser.title='Borracha · clique para configurar';eraser.addEventListener('click',()=>{popup.hidden=false;refresh();});
   // Keep the native controls as the source of truth for the drawing engine.
-  const native=document.createElement('div');native.hidden=true;native.append(size,ink,shape);
+  const native=document.createElement('div');native.hidden=true;native.append(size,ink,shape,eraserMode);
   const shapes=group(),shapeButtons=[];
   for(const [value,label] of [['line','Linha'],['rect','Retângulo'],['ellipse','Círculo'],['triangle','Triângulo'],['cube','Cubo'],['cylinder','Cilindro'],['pyramid','Pirâmide'],['sphere','Esfera']]){
     if(![...shape.options].some(option=>option.value===value))shape.add(new Option(label,value));
@@ -151,6 +157,9 @@ export function initializeDrawingToolbar(options) {
     for(const [item,value] of shapeButtons)item.classList.toggle('active',state.tool==='pen'&&shape.value===value);
     for(let i=0;i<swatches.length;i++){const entry=swatches[i],item=entry[0],value=state.preferences?.palette?.[i]||entry[1];entry[1]=value;item.style.setProperty('--swatch',value);item.setAttribute('aria-label','Cor '+value);item.setAttribute('aria-pressed',String(color.value.toLowerCase()===value));}
     for(const [item,value] of styleButtons)item.setAttribute('aria-pressed',String(state.lineStyle===value));
+    const erasing=state.tool==='eraser';palette.hidden=erasing;styles.hidden=erasing;eraserOptions.hidden=!erasing;
+    for(const [item,value] of eraserButtons)item.setAttribute('aria-pressed',String(eraserMode.value===value));
+    range.setAttribute('aria-label',erasing?'Espessura da borracha':'Espessura do tra\u00e7o');
     range.value=size.value;output.value=size.value+' px';
     pen.style.setProperty('--pen-color',state.preferences?.pens?.pen?.color||color.value);pencil.style.setProperty('--pen-color',state.preferences?.pens?.secondary?.color||color.value);marker.style.setProperty('--pen-color',state.preferences?.pens?.highlighter?.color||color.value);
     areaTools.dataset.visible=String(state.tool==='area'||state.tool==='crop'||state.hasArea);

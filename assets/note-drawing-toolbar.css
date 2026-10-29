@@ -64,3 +64,8 @@ html:is([data-theme="dark"],[data-theme="black"]) .note-reference-toolbar .note-
 @media(max-width:520px){.note-board-settings-heading{padding:16px;}.note-board-settings-tabs{padding:0 16px 12px;}.note-board-settings-content{min-height:0;padding:0 16px 14px;}.note-board-settings-footer{flex-wrap:wrap;}.note-board-settings input,.note-board-settings select{font-size:16px;}.note-board-shortcut{gap:6px;font-size:12px;}.note-board-shortcut button{font-size:11px;padding:7px;}}
 
 .note-toolbar-strip::-webkit-scrollbar{display:none;width:0;height:0;}
+
+.note-eraser-options{display:flex;gap:3px;padding:3px;margin-bottom:12px;border-radius:11px;background:var(--parchment);border:1px solid var(--border);}
+.note-eraser-options button{display:flex;align-items:center;justify-content:center;gap:7px;flex:1;padding:10px 6px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--ink);font:500 12px Inter,sans-serif;}
+.note-eraser-options button[aria-pressed="true"]{background:var(--paper);border-color:var(--border);box-shadow:0 1px 3px #132f4c12;}
+.note-eraser-options svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;}

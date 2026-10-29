@@ -194,6 +194,15 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     });
     assert.deepEqual(native,{textPrevented:false,textModePrevented:false,hiddenPrevented:false});
     await run(()=>{drawingTest.seed();drawingTest.initializeBar();});
+    await page.click('[data-board-tool="eraser"]');
+    assert.equal(await page.locator('.note-eraser-options').isVisible(),true);
+    assert.equal(await page.locator('.note-color-palette').isVisible(),false,'eraser popup hides pen colors');
+    await page.locator('.note-eraser-options button').nth(1).click();
+    assert.equal(await page.locator('.note-eraser-options button').nth(1).getAttribute('aria-pressed'),'true');
+    await page.locator('.note-eraser-options button').first().click();
+    await page.getByRole('slider',{name:'Espessura da borracha',exact:true}).fill('12');
+    assert.equal((await run(()=>drawingTest.toolState())).size,'12');
+
     await run(()=>drawingTest.tool('pen'));
     assert.match(await page.locator('canvas').evaluate(el=>getComputedStyle(el).cursor),/data:image\/svg\+xml/,'drawing uses a circular SVG cursor');
     await page.keyboard.down('Space');await page.keyboard.up('Space');
