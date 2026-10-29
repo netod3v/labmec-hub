@@ -8,7 +8,7 @@ const source = fs.readFileSync(path.join(root, 'assets/password-reset.js'), 'utf
 const markup = fs.readFileSync(path.join(root, 'assets/password-reset.html'), 'utf8');
 function element(id) {
   return { id, value:'', hidden:id==='reset-form', disabled:false, textContent:'', type:'password',
-    listeners:{}, classList:{toggle(){}}, addEventListener(name,fn){this.listeners[name]=fn;},
+    listeners:{}, attributes:{}, setAttribute(name,value){this.attributes[name]=value;}, classList:{toggle(){}}, addEventListener(name,fn){this.listeners[name]=fn;},
     setCustomValidity(value){this.invalid=value;}, reportValidity(){return !this.invalid;},
     reset(){this.wasReset=true;}, focus(){this.focused=true;},
   };
@@ -43,6 +43,7 @@ function element(id) {
   assert.equal(calls.at(-1).body.code,'012345');
   assert.equal(elements['code-form'].hidden,true);
   assert.equal(elements['reset-form'].hidden,false);
+  assert.equal(elements['recovery-panel'].attributes['data-step'],'password');
   elements['new-password'].value='new-secure-password';
   elements['confirm-password'].value='different';
   const count=calls.length;
@@ -53,6 +54,7 @@ function element(id) {
   assert.equal(calls.at(-1).url,'/auth/reset-password');
   assert.equal(calls.at(-1).body.token,'private-grant');
   assert.equal(elements['reset-form'].hidden,true);
+  assert.equal(elements['recovery-panel'].attributes['data-step'],'done');
   assert.equal(back.focused,true);
   assert.match(markup,/inputmode="numeric"/);
   assert.match(markup,/autocomplete="one-time-code"/);
