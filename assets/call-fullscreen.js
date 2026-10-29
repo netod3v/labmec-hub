@@ -1,6 +1,17 @@
 export function initializeCallFullscreen({modal,button,onError=()=>{}}){
-  let busy=false,wasFullscreen=!!document.fullscreenElement,lastExit=-Infinity;
+  let busy=false,exitPromise=null,wasFullscreen=!!document.fullscreenElement,lastExit=-Infinity;
   const supported=!!document.fullscreenEnabled&&typeof modal.requestFullscreen==='function';
+  function exit(){
+    if(exitPromise)return exitPromise;
+    if(!document.fullscreenElement)return Promise.resolve();
+    exitPromise=Promise.resolve().then(()=>document.exitFullscreen()).catch(()=>{}).finally(()=>{exitPromise=null;sync();});
+    return exitPromise;
+  }
+  function cleanup(){
+    const active=document.fullscreenElement;
+    if(!active||!(active===modal||modal.contains(active))||!modal.matches('.hidden,.modal-closing')||exitPromise)return;
+    exit();
+  }
   function sync(){
     const active=!!document.fullscreenElement;
     if(wasFullscreen&&!active)lastExit=performance.now();
@@ -15,16 +26,13 @@ export function initializeCallFullscreen({modal,button,onError=()=>{}}){
     if(!supported||busy)return;
     busy=true;sync();
     try{
-      if(document.fullscreenElement)await document.exitFullscreen();
+      if(document.fullscreenElement)await exit();
       else await modal.requestFullscreen();
     }catch{onError('Não foi possível ativar a tela cheia. Você pode continuar usando a chamada normalmente.');}
-    finally{busy=false;sync();}
+    finally{busy=false;cleanup();sync();}
   });
-  document.addEventListener('fullscreenchange',sync);
-  new MutationObserver(()=>{
-    const active=document.fullscreenElement;
-    if(active&&(active===modal||modal.contains(active))&&modal.matches('.hidden,.modal-closing'))document.exitFullscreen().catch(()=>{});
-  }).observe(modal,{attributes:true,attributeFilter:['class']});
+  document.addEventListener('fullscreenchange',()=>{sync();cleanup();});
+  new MutationObserver(cleanup).observe(modal,{attributes:true,attributeFilter:['class']});
   sync();
   return {keepOpenOnEscape(){return !!document.fullscreenElement||performance.now()-lastExit<250;}};
 }

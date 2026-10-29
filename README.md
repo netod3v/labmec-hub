@@ -310,6 +310,8 @@ node backend/tests/test_note_drawing_area.cjs
 
 Se o navegador estiver em outro local, ajuste `EDGE_EXECUTABLE`. O teste usa desenhos e arquivos fictícios, sem conta de produção. Verifica desenho, seleção, recorte, histórico, atalhos, importação/exportação, preferências, CSP, tela cheia e gestos de toque.
 
+Para conferir o retorno sem travamento durante a tela cheia, execute `node backend/tests/test_fullscreen_return.cjs` com Chrome instalado; `CHROME_EXECUTABLE` permite indicar outro caminho. O teste usa uma página local sem conta, banco ou chamada real: repete entrada e saída nas notas e chamadas, verifica o modo alternativo do editor e o retorno do perfil pelo Home com o Hub em tela cheia. O fechamento usa uma única operação de saída por vez para impedir ciclos de observação de alterações.
+
 A validação mais recente do quadro passou em seis tamanhos emulados: **320×568, 390×844, 768×1024, 1024×768, 1366×1024 e 844×390**. Inclui pinça, movimento com dois dedos e caneta digital com toque simultâneo da mão. A emulação não substitui testes em aparelhos reais, especialmente em navegadores e sistemas diferentes.
 
 Evidências anteriores estão nos relatórios de [segurança](docs/resultado-seguranca-2026-10-28.md) e [adaptação para nuvem](docs/validacao-nuvem-2026-10-28.md). Seus números e pendências correspondem às respectivas datas; não representam uma nova execução completa a cada atualização do README.
