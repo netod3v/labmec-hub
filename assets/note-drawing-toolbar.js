@@ -42,6 +42,7 @@ export function initializeDrawingToolbar(options) {
   const range=document.createElement('input');range.type='range';range.min='1';range.max='30';range.value=size.value;range.setAttribute('aria-label','Espessura do traço');
   const output=document.createElement('output');weight.append('Espessura',range,output);popup.append(weight);
   range.oninput=()=>{
+    if(getState().tool==='laser'){options.setLaserWidth?.(Number(range.value));refresh();return;}
     if(![...size.options].some(option=>option.value===range.value))size.add(new Option(range.value+' px',range.value));
     size.value=range.value;size.dispatchEvent(new Event('change',{bubbles:true}));refresh();
   };
@@ -71,7 +72,7 @@ export function initializeDrawingToolbar(options) {
   const drawing=group();drawing.append(track(pen,'pen'));pen.setAttribute('aria-expanded','false');pen.title='Caneta 1 · cores e espessura';pen.addEventListener('click',()=>{const same=ink.value==='pen';selectPen('pen');if(same)togglePopup();else {popup.hidden=false;pen.setAttribute('aria-expanded','true');refresh();}});
   const pencil=track(button(drawing,'Caneta 2',icons.pencil,()=>{selectPen('secondary');popup.hidden=false;refresh();}),'secondary');
   const marker=track(button(drawing,'Marca-texto',icons.marker,()=>{selectPen('highlighter');popup.hidden=false;refresh();}),'highlighter');
-  const laser=track(button(drawing,'Caneta laser · apresentação',icons.laser,()=>{setTool('laser');popup.hidden=true;refresh();}),'laser');
+  const laser=track(button(drawing,'Caneta laser · apresentação',icons.laser,()=>{setTool('laser');popup.hidden=false;refresh();}),'laser');
   drawing.append(track(eraser,'eraser'));eraser.title='Borracha · clique para configurar';eraser.addEventListener('click',()=>{popup.hidden=false;refresh();});
   // Keep the native controls as the source of truth for the drawing engine.
   const native=document.createElement('div');native.hidden=true;native.append(size,ink,shape,eraserMode);
@@ -169,10 +170,10 @@ export function initializeDrawingToolbar(options) {
     for(const [item,value] of shapeButtons)item.classList.toggle('active',state.tool==='pen'&&shape.value===value);
     for(let i=0;i<swatches.length;i++){const entry=swatches[i],item=entry[0],value=state.preferences?.palette?.[i]||entry[1];entry[1]=value;item.style.setProperty('--swatch',value);item.setAttribute('aria-label','Cor '+value);item.setAttribute('aria-pressed',String(color.value.toLowerCase()===value));}
     for(const [item,value] of styleButtons)item.setAttribute('aria-pressed',String(state.lineStyle===value));
-    const erasing=state.tool==='eraser',highlighting=state.tool==='pen'&&ink.value==='highlighter';palette.hidden=erasing||highlighting;markerPalette.hidden=!highlighting;for(const [item,value] of markerSwatches)item.setAttribute('aria-pressed',String(color.value.toLowerCase()===value));styles.hidden=erasing||highlighting;opacityControl.hidden=!highlighting;opacityRange.value=String(Math.round((state.preferences?.pens?.highlighter?.opacity??.4)*100));opacityOutput.value=opacityRange.value+' %';eraserOptions.hidden=!erasing;
+    const lasering=state.tool==='laser',erasing=state.tool==='eraser',highlighting=state.tool==='pen'&&ink.value==='highlighter';palette.hidden=erasing||highlighting||lasering;markerPalette.hidden=!highlighting;for(const [item,value] of markerSwatches)item.setAttribute('aria-pressed',String(color.value.toLowerCase()===value));styles.hidden=erasing||highlighting||lasering;opacityControl.hidden=!highlighting;opacityRange.value=String(Math.round((state.preferences?.pens?.highlighter?.opacity??.4)*100));opacityOutput.value=opacityRange.value+' %';eraserOptions.hidden=!erasing;
     for(const [item,value] of eraserButtons)item.setAttribute('aria-pressed',String(eraserMode.value===value));
-    range.setAttribute('aria-label',erasing?'Espessura da borracha':'Espessura do tra\u00e7o');
-    range.value=size.value;output.value=size.value+' px';
+    range.setAttribute('aria-label',lasering?'Espessura da caneta laser':erasing?'Espessura da borracha':'Espessura do tra\u00e7o');
+    range.value=lasering?String(state.preferences?.laserWidth??4):size.value;output.value=range.value+' px';
     pen.style.setProperty('--pen-color',state.preferences?.pens?.pen?.color||color.value);pencil.style.setProperty('--pen-color',state.preferences?.pens?.secondary?.color||color.value);marker.style.setProperty('--pen-color',state.preferences?.pens?.highlighter?.color||color.value);
     areaTools.dataset.visible=String(state.tool==='area'||state.tool==='crop'||state.hasArea);
     for(const item of toolbar.querySelectorAll('.whiteboard-tool'))item.setAttribute('aria-pressed',String(item.classList.contains('active')));

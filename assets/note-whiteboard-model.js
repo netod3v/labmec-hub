@@ -9,13 +9,13 @@ export const WHITEBOARD_SHORTCUTS = [
   ['pen','Caneta 1'],['secondary','Caneta 2'],['eraser','Borracha'],['text','Nova caixa de texto']
 ];
 export function defaultWhiteboardSettings() {
-  return {background:'color',color:'#ffffff',recognize:true,recognizeTypes:['ellipse','rect','triangle','line'],wheel:'zoom',hiddenTools:[],palette:['#111827','#ffffff','#ef4444','#2563eb','#16a34a','#f59e0b','#a855f7'],
+  return {laserWidth:4,background:'color',color:'#ffffff',recognize:true,recognizeTypes:['ellipse','rect','triangle','line'],wheel:'zoom',hiddenTools:[],palette:['#111827','#ffffff','#ef4444','#2563eb','#16a34a','#f59e0b','#a855f7'],
     shortcuts:{pan:'Space',zoomModifier:'Control',straight:'Control',undo:'Ctrl+z',redo:'Ctrl+y',delete:'Delete',pen:'p',secondary:'h',eraser:'e',text:'t'},
     pens:{pen:{color:'#111827',width:4,lineStyle:'solid'},secondary:{color:'#ef4444',width:4,lineStyle:'solid'},highlighter:{color:'#111827',width:20,lineStyle:'solid',opacity:.4}}};
 }
 export function normalizeWhiteboardSettings(value) {
   const defaults=defaultWhiteboardSettings(),raw=value&&typeof value==='object'?value:{};
-  const settings={...defaults,background:['grid','dots','color'].includes(raw.background)?raw.background:defaults.background,
+  const settings={...defaults,laserWidth:Number.isFinite(raw.laserWidth)&&raw.laserWidth>=1&&raw.laserWidth<=30?raw.laserWidth:4,background:['grid','dots','color'].includes(raw.background)?raw.background:defaults.background,
     color:/^#[a-f\d]{6}$/i.test(raw.color)?raw.color:defaults.color,recognize:typeof raw.recognize==='boolean'?raw.recognize:true,
     wheel:['none','pan','zoom'].includes(raw.wheel)?raw.wheel:'zoom',
     recognizeTypes:Array.isArray(raw.recognizeTypes)?raw.recognizeTypes.filter(x=>['ellipse','rect','triangle','line'].includes(x)):defaults.recognizeTypes,
