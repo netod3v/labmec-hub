@@ -32,7 +32,7 @@ export function initializeDrawingToolbar(options) {
   color.title='Escolher outra cor';palette.append(color);popup.append(palette);
   const markerPalette=document.createElement('div');markerPalette.className='note-color-palette note-marker-palette';markerPalette.setAttribute('aria-label','Cores do marca-texto');
   const markerSwatches=[];
-  for(const value of ['#fff34d','#ff9fa5','#86edb0','#94c4ff','#d7afff','#ffbd78','#111827']){
+  for(const value of ['#111827','#ffffff','#ef4444','#2563eb','#16a34a','#f59e0b','#a855f7']){
     const item=document.createElement('button');item.type='button';item.className='note-color-swatch';item.style.setProperty('--swatch',value);item.setAttribute('aria-label','Marca-texto '+value);
     item.onclick=()=>{editingSwatch=null;color.value=value;color.dispatchEvent(new Event('input',{bubbles:true}));refresh();};markerPalette.append(item);markerSwatches.push([item,value]);
   }
@@ -170,7 +170,7 @@ export function initializeDrawingToolbar(options) {
     for(const [item,value] of shapeButtons)item.classList.toggle('active',state.tool==='pen'&&shape.value===value);
     for(let i=0;i<swatches.length;i++){const entry=swatches[i],item=entry[0],value=state.preferences?.palette?.[i]||entry[1];entry[1]=value;item.style.setProperty('--swatch',value);item.setAttribute('aria-label','Cor '+value);item.setAttribute('aria-pressed',String(color.value.toLowerCase()===value));}
     for(const [item,value] of styleButtons)item.setAttribute('aria-pressed',String(state.lineStyle===value));
-    const lasering=state.tool==='laser',erasing=state.tool==='eraser',highlighting=state.tool==='pen'&&ink.value==='highlighter';palette.hidden=erasing||highlighting||lasering;markerPalette.hidden=!highlighting;for(const [item,value] of markerSwatches)item.setAttribute('aria-pressed',String(color.value.toLowerCase()===value));styles.hidden=erasing||highlighting||lasering;opacityControl.hidden=!highlighting;opacityRange.value=String(Math.round((state.preferences?.pens?.highlighter?.opacity??.4)*100));opacityOutput.value=opacityRange.value+' %';eraserOptions.hidden=!erasing;
+    const lasering=state.tool==='laser',erasing=state.tool==='eraser',highlighting=state.tool==='pen'&&ink.value==='highlighter';palette.hidden=erasing||highlighting||lasering;markerPalette.hidden=!highlighting;(highlighting?markerPalette:palette).append(color);for(const [item,value] of markerSwatches)item.setAttribute('aria-pressed',String(color.value.toLowerCase()===value));styles.hidden=erasing||highlighting||lasering;opacityControl.hidden=!highlighting;opacityRange.value=String(Math.round((state.preferences?.pens?.highlighter?.opacity??.4)*100));opacityOutput.value=opacityRange.value+' %';eraserOptions.hidden=!erasing;
     for(const [item,value] of eraserButtons)item.setAttribute('aria-pressed',String(eraserMode.value===value));
     range.setAttribute('aria-label',lasering?'Espessura da caneta laser':erasing?'Espessura da borracha':'Espessura do tra\u00e7o');
     range.value=lasering?String(state.preferences?.laserWidth??4):size.value;output.value=range.value+' px';
