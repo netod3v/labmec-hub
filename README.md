@@ -127,6 +127,8 @@ O ambiente publicado usa **Vercel para o Hub**, **Supabase para PostgreSQL e arq
 | `LIVEKIT_URL` | URL pública do projeto, começando com `wss://` |
 | `LIVEKIT_INTERNAL_URL` | Endpoint HTTPS correspondente para a API do LiveKit |
 | `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Credenciais do projeto LiveKit |
+| `RESET_MAIL_DELIVERY` | `queue` na Vercel; não usa threads de envio após a resposta |
+| `RESET_MAIL_WORKER_SECRET` | Segredo exclusivo do processador agendado da recuperação de senha |
 
 As cotas acima são configurações do Hub, não uma garantia sobre os planos dos provedores. Confira os limites disponíveis nos respectivos painéis. O limite de upload inclui o formulário HTTP; arquivos próximos ao teto podem ser recusados.
 
@@ -142,7 +144,7 @@ Selecione a conexão com cuidado antes de executar comandos administrativos. O e
 
 `.env` e `.env.cloud` são privados e ignorados pelo Git. Importe os valores pelo painel da hospedagem; nunca inclua credenciais em `lab-config.js`, commits, prints ou exemplos públicos.
 
-O guia [Configuração de nuvem](docs/nuvem-gratuita.md) detalha armazenamento, pooler e limitações. A recuperação de senha por e-mail exige uma entrega compatível com execução serverless; o envio local por thread não constitui uma fila durável. Não considere o SMTP validado em produção apenas por preencher as variáveis.
+O guia [Configuração de nuvem](docs/nuvem-gratuita.md) detalha armazenamento, pooler e limitações. A recuperação por e-mail na Vercel usa uma fila persistente e um processador agendado. A ativação requer SMTP, segredo e agendamento; veja o [guia de recuperação serverless](docs/recuperacao-serverless.md). Sem um processador ativo, a API informa indisponibilidade em vez de confirmar um envio que não foi agendado.
 
 ## Contas e unidades
 
@@ -177,6 +179,8 @@ No `.env` local, defina `PUBLIC_ORIGIN` com o endereço público HTTPS do Hub (s
 Para testar somente no computador, `PUBLIC_ORIGIN=http://127.0.0.1:5000` é aceito, mas o link só funciona nesse computador. Para outras pessoas, use o domínio HTTPS acessível a elas. Sem SMTP ou origem configurada, o botão explica que a recuperação ainda está em configuração e indica o suporte.
 
 O link abre uma página de nova senha, vale 30 minutos e deixa de funcionar após uma redefinição, inclusive pelo terminal. Senhas exigem 12 a 256 caracteres. A API exige CSRF/origem válida, limita tentativas e responde de forma genérica para não informar se um e-mail está cadastrado. Tokens usam assinatura do servidor e a versão da sessão; a gravação é serializada por conta. O segredo do link fica no fragmento da URL, removido ao abrir, sem armazenamento no navegador. Nenhuma senha é enviada por e-mail. Falhas de envio geram um registro sem credenciais ou conteúdo da mensagem; verifique o SMTP se os e-mails não chegarem.
+
+Na Vercel, configurar somente o Gmail não ativa a recuperação: siga [Recuperação serverless](docs/recuperacao-serverless.md) para configurar a fila e o agendamento. Pedidos pendentes sobrevivem ao encerramento de instâncias; falhas temporárias têm novas tentativas. A confirmação SMTP pode ser ambígua após uma interrupção, então um e-mail pode ser reenviado. O envio não tem garantia de exatamente uma vez.
 
 Contas e metadados de arquivos ficam em tabelas próprias. A tabela `documents` usa JSONB para preservar os formatos atuais de publicações, enquetes, comentários e notas. Registros são separados por coleção e identificador; nos murais privados, cada documento agrupa os itens de uma unidade. Essa é uma camada de compatibilidade com a interface, não um modelo relacional de dados clínicos.
 

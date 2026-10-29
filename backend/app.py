@@ -29,6 +29,7 @@ from .passwords import validate_password
 from .password_reset import register_password_reset
 from .game_ranking import register_game_ranking
 from .team_voice import register_team_voice, disconnect_voice_user
+from .reset_mail_queue import WORKER_PATH, authorize_worker, register_reset_mail_worker
 from .attachments import INLINE_TYPES, bind_post_attachments, detect_media_type
 from .mural_milestones import record_first_post
 from .achievements import record_achievements, profile_achievements, achievement_catalog
@@ -106,6 +107,8 @@ def create_app(settings=None, database=None, *, application=None):
         SMTP_USERNAME=os.environ.get('SMTP_USERNAME', ''),
         SMTP_PASSWORD=os.environ.get('SMTP_PASSWORD', ''),
         SMTP_FROM=os.environ.get('SMTP_FROM', ''),
+        RESET_MAIL_DELIVERY=os.environ.get('RESET_MAIL_DELIVERY', 'queue' if on_vercel else 'thread'),
+        RESET_MAIL_WORKER_SECRET=os.environ.get('RESET_MAIL_WORKER_SECRET', ''),
         LIVEKIT_URL=os.environ.get('LIVEKIT_URL', ''),
         LIVEKIT_INTERNAL_URL=os.environ.get('LIVEKIT_INTERNAL_URL', ''),
         LIVEKIT_API_KEY=os.environ.get('LIVEKIT_API_KEY', ''),
@@ -134,7 +137,11 @@ def create_app(settings=None, database=None, *, application=None):
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=proxies, x_proto=proxies, x_host=proxies)
     if database is None and not app.config['DATABASE_URL']:
         raise RuntimeError('Defina DATABASE_URL para conectar ao PostgreSQL.')
-    app.database = database or Database(app.config['DATABASE_URL'])
+    if app.config['RESET_MAIL_DELIVERY'] not in {'thread', 'queue'}:
+        raise RuntimeError('RESET_MAIL_DELIVERY deve ser thread ou queue.')
+    if on_vercel and app.config['RESET_MAIL_DELIVERY'] != 'queue':
+        raise RuntimeError('Na Vercel, recuperação de senha exige fila persistente.')
+    app.database = database or Database(app.config['DATABASE_URL'], require_tls=on_vercel)
     storage = Path(app.config['STORAGE_DIR']).resolve()
     storage.mkdir(parents=True, exist_ok=True)
     backend = app.config['STORAGE_BACKEND']
@@ -150,6 +157,11 @@ def create_app(settings=None, database=None, *, application=None):
     @app.before_request
     def protect_request():
         if not request.path.startswith('/api/'):
+            return
+        if request.path == WORKER_PATH:
+            # This endpoint never authenticates by cookie. Only the scheduler's
+            # explicit bearer credential may bypass the normal CSRF flow.
+            authorize_worker(app)
             return
         if request.path != '/api/files':
             api_limit = min(app.config['MAX_CONTENT_LENGTH'], 8 * 1024 * 1024)
@@ -282,6 +294,7 @@ def create_app(settings=None, database=None, *, application=None):
     register_game_ranking(app)
     register_team_voice(app)
     register_administration(app)
+    register_reset_mail_worker(app)
 
     @app.get('/assets/<path:name>')
     def assets(name):

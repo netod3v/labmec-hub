@@ -1,5 +1,6 @@
 """Cloud storage preserves API authorization, limits and temporary-file cleanup."""
 from io import BytesIO
+from contextlib import contextmanager
 from pathlib import Path
 import tempfile
 import unittest
@@ -81,6 +82,24 @@ class CloudStorageApiTests(unittest.TestCase):
         self.assertEqual(self.database.list_files(), [])
         self.assertEqual(list(Path(self.folder.name).iterdir()), [])
 
+    def test_database_commit_failure_after_upload_removes_remote_object(self):
+        self.login()
+        original = self.database.transaction
+
+        @contextmanager
+        def failed_commit():
+            with original() as repository:
+                yield repository
+                if repository.files:
+                    raise RuntimeError('simulated commit failure')
+
+        with patch.object(self.database, 'transaction', failed_commit):
+            with self.assertRaisesRegex(RuntimeError, 'simulated commit failure'):
+                self.upload()
+        self.assertEqual(self.remote.files, {})
+        self.assertEqual(self.database.list_files(), [])
+        self.assertEqual(list(Path(self.folder.name).iterdir()), [])
+
     def test_quota_and_request_limit_apply_before_cloud_upload(self):
         self.login()
         self.assertEqual(self.upload(b'x'*1025).status_code, 400)
@@ -106,9 +125,12 @@ class CloudStorageApiTests(unittest.TestCase):
             self.assertEqual(app.config['STORAGE_BACKEND'], 'supabase')
             self.assertEqual(app.config['MAX_CONTENT_LENGTH'], 4*1024*1024)
             self.assertTrue(app.config['SESSION_COOKIE_SECURE'])
+            self.assertEqual(app.config['RESET_MAIL_DELIVERY'], 'queue')
             self.assertEqual(app.config['SESSION_COOKIE_NAME'], '__Host-labiomec_session')
             with self.assertRaises(RuntimeError):
                 create_app({'STORAGE_DIR': self.folder.name, 'STORAGE_BACKEND': 'local'}, self.database)
+            with self.assertRaisesRegex(RuntimeError, 'fila persistente'):
+                create_app({'STORAGE_DIR': self.folder.name, 'RESET_MAIL_DELIVERY': 'thread'}, self.database)
 
     def test_cloud_env_file_is_opt_in(self):
         for name in ('.env', '.env.cloud'):

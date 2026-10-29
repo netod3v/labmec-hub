@@ -12,7 +12,9 @@ Enviar ao GitHub não publica automaticamente os dados locais. O projeto continu
 - Configurar o armazenamento privado Supabase implementado nesta atualizacao; instrucoes em `nuvem-gratuita.md`. Disco local nao e persistente na Vercel, e os uploads intermediados pela API usam limite conservador de 4 MiB.
 - Hospedar LiveKit separadamente ou configurar serviço gerenciado. O Docker Compose local não é iniciado pelo simples deploy do repositório.
 - Definir origem HTTPS pública, cookies seguros, segredos exclusivos de produção e configuração dos proxies. Não copiar o `.env` para o GitHub ou para o código cliente.
-- Adaptar o envio de recuperação para uma tarefa suportada pelo ciclo de vida da hospedagem; threads locais não garantem entrega após o término de uma execução serverless.
+- Ativar a fila persistente de recuperação e o agendamento autenticado conforme
+  [recuperacao-serverless.md](recuperacao-serverless.md). O modo de threads locais
+  é recusado na Vercel; SMTP e execução agendada precisam de configuração privada.
 - Verificar os limites atuais de payload e duração da hospedagem antes de liberar os uploads existentes.
 
 A entrada Python e as dependências corrigem a organização do pacote, mas não tornam a versão atual pronta para produção na Vercel sem configurar esses serviços e concluir as pendências indicadas em `nuvem-gratuita.md`. Não definir `/tmp` como solução permanente nem expor apenas o HTML com uma API ainda apontando para localhost.

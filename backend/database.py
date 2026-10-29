@@ -5,16 +5,27 @@ from pathlib import Path
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+from psycopg.conninfo import conninfo_to_dict
 
 
 class Database:
-    def __init__(self, url):
+    def __init__(self, url, *, require_tls=False):
         self.url = url
+        self.connect_options = {}
+        if require_tls:
+            try:
+                mode = conninfo_to_dict(url).get('sslmode', 'require')
+            except psycopg.ProgrammingError:
+                raise RuntimeError('Defina uma conexão PostgreSQL válida para a nuvem.') from None
+            if mode not in {'require', 'verify-ca', 'verify-full'}:
+                raise RuntimeError('A conexão PostgreSQL em nuvem exige TLS.')
+            self.connect_options['sslmode'] = mode
 
     @contextmanager
     def transaction(self):
         # O context manager faz commit ou rollback e sempre fecha a conexão.
-        with psycopg.connect(self.url, row_factory=dict_row, connect_timeout=5, prepare_threshold=None) as connection:
+        with psycopg.connect(self.url, row_factory=dict_row, connect_timeout=5, prepare_threshold=None,
+                             **self.connect_options) as connection:
             yield Repository(connection)
 
     def initialize(self):
@@ -70,6 +81,37 @@ class Repository:
         return self.connection.execute(
             'SELECT id, data FROM documents WHERE collection = %s', (collection,),
         ).fetchall()
+
+    def prune_reset_mail_jobs(self, now):
+        self.connection.execute(
+            "DELETE FROM documents WHERE collection = '_reset_mail_jobs' "
+            "AND (data->>'expiresAt')::double precision <= %s "
+            "AND (data->>'leaseUntil')::double precision <= %s", (now, now))
+
+    def claim_reset_mail_job(self, now, lease, lease_seconds):
+        row = self.connection.execute(
+            "SELECT id, data FROM documents WHERE collection = '_reset_mail_jobs' "
+            "AND data->>'status' = 'pending' "
+            "AND (data->>'nextAttempt')::double precision <= %s "
+            "AND (data->>'leaseUntil')::double precision <= %s "
+            "ORDER BY updated_at, id LIMIT 1 FOR UPDATE SKIP LOCKED", (now, now)).fetchone()
+        if row:
+            row['data'].update(lease=lease, leaseUntil=now + lease_seconds,
+                               attempts=row['data']['attempts'] + 1)
+            self.save_document('_reset_mail_jobs', row['id'], row['data'])
+        return row
+
+    def finish_reset_mail_job(self, key, lease, data=None):
+        if data is None:
+            result = self.connection.execute(
+                "DELETE FROM documents WHERE collection = '_reset_mail_jobs' AND id = %s "
+                "AND data->>'lease' = %s", (key, lease))
+        else:
+            result = self.connection.execute(
+                "UPDATE documents SET data = %s, updated_at = now() "
+                "WHERE collection = '_reset_mail_jobs' AND id = %s AND data->>'lease' = %s",
+                (Jsonb(data), key, lease))
+        return result.rowcount == 1
 
     def document(self, collection, document_id):
         row = self.connection.execute(

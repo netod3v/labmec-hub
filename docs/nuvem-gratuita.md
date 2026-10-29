@@ -13,6 +13,11 @@ O ambiente online começa com dados novos, conforme escolha do usuário. Não im
 - `MAX_UPLOAD_MB=4`, `POST_ATTACHMENT_MAX_MB=4`, `STORAGE_LIMIT_GB=1` para os primeiros testes gratuitos. O limite é por corpo HTTP: um arquivo próximo de 4 MiB pode exceder o limite ao incluir o formulário.
 - `ALLOW_REGISTRATION=true` permite testar cadastro, sem atribuir privilégios administrativos ou acesso a unidades automaticamente. A primeira conta administrativa precisa de concessão pelo operador.
 - LiveKit Cloud precisa de `LIVEKIT_URL=wss://...`, `LIVEKIT_INTERNAL_URL=https://...` e o par de credenciais do projeto. Campos vazios mantêm chamadas indisponíveis, sem usar o serviço local.
+- A conexão PostgreSQL da Vercel exige TLS também no código: se a URI não informar
+  `sslmode`, é aplicado `require`. `verify-ca` e `verify-full` são preservados;
+  modos que permitem conexão sem TLS são recusados.
+- Recuperação por e-mail: `RESET_MAIL_DELIVERY=queue`, SMTP e segredo dedicado do
+  processador. Ative o agendamento conforme [recuperacao-serverless.md](recuperacao-serverless.md).
 
 ## Arquivos privados
 
@@ -27,7 +32,10 @@ O esquema ativa RLS nas quatro tabelas internas e revoga acesso das funções p�
 - A Vercel documenta limite de payload de 4,5 MB para requisições e respostas de funções; por isso o upload intermediado pela API usa limite conservador de 4 MiB. Arquivos maiores exigem um fluxo separado de envio direto assinado, com validação posterior; ainda não implementado.
 - O Supabase Free oferece 500 MB de banco e 1 GB de arquivos, com suspensão por inatividade e limites de transferência. Sem migração automática do ambiente local.
 - Supabase e PostgreSQL não formam uma única transação distribuída. Falha de upload tenta remover o objeto; falhas de limpeza são registradas. Reconciliar objetos órfãos em manutenção. Na exclusão, uma falha de commit após apagar o objeto também requer reconciliação.
-- Recuperação por e-mail continua pendente da configuração de produção. O envio em thread usado no servidor local não é uma fila durável suportada para execução serverless. Manter SMTP não configurado na Vercel até implementar e validar um mecanismo de entrega compatível; a API retorna indisponibilidade explícita.
+- A recuperação por e-mail usa fila persistente na Vercel. SMTP e agendamento
+  continuam exigindo ativação e validação no ambiente real; a API retorna
+  indisponibilidade enquanto não houver um processador configurado e ativo.
+  A entrega pode se repetir após uma confirmação SMTP ambígua; não é exatamente uma vez.
 - LiveKit, publicação na Vercel e a primeira conta administrativa ainda exigem configuração privada e validação online.
 
 Referências: [Vercel — limites](https://vercel.com/docs/functions/limitations), [Supabase — pooler](https://supabase.com/docs/guides/database/connecting-to-postgres), [Supabase — prepared statements](https://supabase.com/kb/troubleshooting/disabling-prepared-statements-qL8lEL), [Supabase — preços](https://supabase.com/pricing).

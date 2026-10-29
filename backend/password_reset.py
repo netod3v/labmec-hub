@@ -9,7 +9,6 @@ from email.message import EmailMessage
 from email.utils import formataddr, parseaddr
 from html import escape
 from pathlib import Path
-from urllib.parse import urlsplit
 
 from flask import jsonify, request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
@@ -17,6 +16,7 @@ from werkzeug.exceptions import BadRequest
 from werkzeug.security import generate_password_hash
 
 from .passwords import validate_password
+from .reset_mail_queue import enqueue_reset_mail, queue_ready, valid_reset_origin
 
 
 def create_reset_email(config, email, link):
@@ -45,9 +45,9 @@ def send_reset_email(config, email, link):
     message = create_reset_email(config, email, link)
     context = ssl.create_default_context()
     if config['SMTP_PORT'] == 465:
-        connection = smtplib.SMTP_SSL(config['SMTP_HOST'], config['SMTP_PORT'], timeout=15, context=context)
+        connection = smtplib.SMTP_SSL(config['SMTP_HOST'], config['SMTP_PORT'], timeout=5, context=context)
     else:
-        connection = smtplib.SMTP(config['SMTP_HOST'], config['SMTP_PORT'], timeout=15)
+        connection = smtplib.SMTP(config['SMTP_HOST'], config['SMTP_PORT'], timeout=5)
     with connection as server:
         if config['SMTP_PORT'] != 465:
             server.ehlo()
@@ -110,13 +110,18 @@ def register_password_reset(app):
         if limited:
             return limited
         origin = app.config['PUBLIC_ORIGIN']
-        parsed = urlsplit(origin)
-        valid_origin = (parsed.scheme == 'https' or parsed.scheme == 'http' and parsed.hostname in {'localhost', '127.0.0.1', '::1'}) and parsed.netloc and not parsed.username and not parsed.password and parsed.path in {'', '/'} and not parsed.query and not parsed.fragment
+        valid_origin = valid_reset_origin(origin)
         if not valid_origin or not all(app.config[name] for name in ('SMTP_HOST', 'SMTP_USERNAME', 'SMTP_PASSWORD')):
             return jsonify(error='A recuperação por e-mail ainda está sendo configurada. Entre em contato com o suporte: pedroalexandrinoneto55@gmail.com.', code='auth/recovery-unavailable'), 503
+        queued = app.config['RESET_MAIL_DELIVERY'] == 'queue'
+        if queued and not queue_ready(app):
+            return jsonify(error='A recuperação por e-mail está temporariamente indisponível. Tente novamente mais tarde ou contate o suporte.', code='auth/recovery-unavailable'), 503
         with app.database.transaction() as repository:
             user = repository.user_by_email(email)
         if user and not user['profile'].get('isRemoved') and not user['profile'].get('isBanned'):
+            if queued:
+                enqueue_reset_mail(app, user)
+                return jsonify(ok=True, message=generic_message)
             token = serializer.dumps({'uid': user['id'], 'version': user['session_version']})
             try:
                 dispatch_reset_email(app, email, origin.rstrip('/') + '/reset-password#token=' + token)

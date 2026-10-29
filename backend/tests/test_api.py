@@ -60,6 +60,26 @@ class MemoryDatabase:
     def documents(self, collection):
         return [dict(id=key, data=deepcopy(value)) for (name, key), value in self.records.items() if name == collection]
 
+    def prune_reset_mail_jobs(self, now):
+        for row in self.documents('_reset_mail_jobs'):
+            if row['data']['expiresAt'] <= now and row['data'].get('leaseUntil', 0) <= now:
+                self.save_document('_reset_mail_jobs', row['id'], None)
+
+    def claim_reset_mail_job(self, now, lease, lease_seconds):
+        for row in self.documents('_reset_mail_jobs'):
+            job = row['data']
+            if job['status'] == 'pending' and job['nextAttempt'] <= now and job.get('leaseUntil', 0) <= now:
+                job.update(lease=lease, leaseUntil=now + lease_seconds, attempts=job['attempts'] + 1)
+                self.save_document('_reset_mail_jobs', row['id'], job)
+                return row
+
+    def finish_reset_mail_job(self, key, lease, data=None):
+        old = self.document('_reset_mail_jobs', key)
+        if old and old.get('lease') == lease:
+            self.save_document('_reset_mail_jobs', key, data)
+            return True
+        return False
+
     def document(self, collection, document_id):
         return deepcopy(self.records.get((collection, document_id)))
 
