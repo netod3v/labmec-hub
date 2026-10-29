@@ -3424,6 +3424,7 @@ body.site-policy-open{overflow:hidden!important;}
 <link rel="stylesheet" href="assets/message-menu.css">
 <link rel="stylesheet" href="assets/post-navigation.css">
 <link rel="stylesheet" href="assets/note-document.css">
+<link rel="stylesheet" href="assets/note-drawing-toolbar.css">
 <link rel="stylesheet" href="assets/header-tooltips.css">
 <link rel="stylesheet" href="assets/first-post-celebration.css">
 <link rel="stylesheet" href="assets/achievements.css">
@@ -3462,6 +3463,7 @@ import { editContactNickname } from './assets/contact-nickname.js';
 import { initializeMessageMenu, animateMessageRemoval } from './assets/message-menu.js';
 import { postMatchesMediaType, attachmentMatchesType } from './assets/mural-media-filter.js';
 import { initializeNoteDocumentTools, sanitizeNoteHtml } from './assets/note-document.js';
+import { initializeDrawingToolbar } from './assets/note-drawing-toolbar.js';
 import { drawingRect, containsDrawingPoint, drawingSize, drawingShortcut } from './assets/note-drawing-area.js';
 import { initializeCompactNoteEditor } from './assets/note-compact-editor.js';
 import { initializeHeaderTooltips } from './assets/header-tooltips.js';
@@ -3584,9 +3586,9 @@ noteDrawUndo.title='Desfazer (Ctrl+Z)';
 noteDrawUndo.insertAdjacentHTML('afterend','<button class="whiteboard-tool" id="note-draw-redo" type="button" title="Refazer (Ctrl+Y)" aria-label="Refazer"><svg viewBox="0 0 24 24"><path d="m15 7 5 5-5 5M19 12h-8a6 6 0 0 0-6 6"/></svg></button>');
 const noteDrawRedo=document.getElementById('note-draw-redo');
 noteDrawCanvas.tabIndex=0;
-noteDrawCanvas.setAttribute('aria-label','Quadro de desenho. Ctrl+C copia a ?rea selecionada; Ctrl+V cola; Ctrl+Z desfaz; Ctrl+Y refaz.');
-noteAreaTools.querySelector('[data-area-action="copy"]').title='Copiar ?rea (Ctrl+C)';
-noteAreaTools.querySelector('[data-area-action="paste"]').title='Colar ?rea (Ctrl+V)';
+noteDrawCanvas.setAttribute('aria-label','Quadro de desenho. Ctrl+C copia a área selecionada; Ctrl+V cola; Ctrl+Z desfaz; Ctrl+Y refaz.');
+noteAreaTools.querySelector('[data-area-action="copy"]').title='Copiar área (Ctrl+C)';
+noteAreaTools.querySelector('[data-area-action="paste"]').title='Colar área (Ctrl+V)';
 const noteDrawPen = document.getElementById('note-draw-pen');
 const noteDrawEraser = document.getElementById('note-draw-eraser');
 const noteDrawViewport = document.getElementById('note-draw-viewport');
@@ -4370,6 +4372,9 @@ function updateActiveTabContent(){
 let noteSavedRange = null;
 let noteDrawing = false;
 let noteDrawTool = 'pen';
+let noteDrawingToolbar=null;
+let noteLineStyle='solid';
+let noteLogoTemplate=null;
 let noteDrawZoom = 1;
 let noteDrawObjects = [];
 let noteDrawCurrent = null;
@@ -4392,8 +4397,17 @@ function noteBitmap(source){
   }
   return noteBitmapCache.get(source);
 }
+async function prepareNoteLogo(){
+  if(!noteLogoTemplate){
+    const image=new Image();image.src='assets/labiomec-logo-transparent.png';await image.decode();
+    const canvas=document.createElement('canvas');canvas.width=240;canvas.height=240;
+    canvas.getContext('2d').drawImage(image,0,0,240,240);noteLogoTemplate=noteBitmapObject(canvas);
+  }
+  return noteLogoTemplate;
+}
 function noteDrawingReady(){return (!noteLegacyImage||(noteLegacyImage.complete&&noteLegacyImage.naturalWidth>0))&&noteDrawObjects.every(o=>o.type!=='bitmap'||(noteBitmap(o.source) instanceof HTMLCanvasElement||(noteBitmap(o.source)?.complete&&noteBitmap(o.source)?.naturalWidth>0)));}
 function updateNoteAreaTools(){
+  noteDrawingToolbar?.refresh();
   const id=getActiveTab()?.id;
   noteDrawUndo.disabled=!(noteDrawHistory.get(id)?.length);
   noteDrawRedo.disabled=!(noteDrawRedoHistory.get(id)?.length);
@@ -4447,12 +4461,20 @@ function drawNoteObject(ctx,o){
     if(image&&(image instanceof HTMLCanvasElement||(image.complete&&image.naturalWidth>0)))ctx.drawImage(image,o.x1,o.y1,o.x2-o.x1,o.y2-o.y1);
     ctx.restore();return;
   }
+  if(o.lineStyle==='dashed')ctx.setLineDash([ctx.lineWidth*3,ctx.lineWidth*2]);
   ctx.beginPath();
   if(o.type==='stroke'&&o.points?.length){ctx.moveTo(o.points[0].x,o.points[0].y);o.points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));}
   if(o.type==='line'){ctx.moveTo(o.x1,o.y1);ctx.lineTo(o.x2,o.y2);}
   if(o.type==='rect')ctx.rect(Math.min(o.x1,o.x2),Math.min(o.y1,o.y2),Math.abs(o.x2-o.x1),Math.abs(o.y2-o.y1));
   if(o.type==='ellipse'){const x=(o.x1+o.x2)/2,y=(o.y1+o.y2)/2;ctx.ellipse(x,y,Math.abs(o.x2-o.x1)/2,Math.abs(o.y2-o.y1)/2,0,0,Math.PI*2);}
-  ctx.stroke();ctx.restore();
+  ctx.stroke();
+  if(o.lineStyle==='arrow'&&(o.type==='line'||o.type==='stroke')){
+    const points=o.type==='stroke'?o.points:[{x:o.x1,y:o.y1},{x:o.x2,y:o.y2}];
+    if(points.length>1){const end=points.at(-1),start=[...points].reverse().find(p=>Math.hypot(end.x-p.x,end.y-p.y)>1);
+      if(start){const angle=Math.atan2(end.y-start.y,end.x-start.x),length=Math.max(12,ctx.lineWidth*4);ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(end.x-length*Math.cos(angle-Math.PI/6),end.y-length*Math.sin(angle-Math.PI/6));ctx.lineTo(end.x,end.y);ctx.lineTo(end.x-length*Math.cos(angle+Math.PI/6),end.y-length*Math.sin(angle+Math.PI/6));ctx.stroke();}
+    }
+  }
+  ctx.restore();
 }
 function noteObjectBounds(o){
   if(o.type==='stroke'){const xs=o.points.map(p=>p.x),ys=o.points.map(p=>p.y);return{x1:Math.min(...xs),y1:Math.min(...ys),x2:Math.max(...xs),y2:Math.max(...ys)};}
@@ -4585,13 +4607,17 @@ noteDrawCanvas.addEventListener('pointerdown',e=>{
     renderNoteDrawing();updateNoteAreaTools();return;
   }
   clearNoteArea();pushNoteDrawingHistory();
+  if(noteDrawTool==='stamp'){
+    if(noteLogoTemplate){const size=Math.min(160,noteDrawCanvas.width,noteDrawCanvas.height),x=Math.max(0,Math.min(p.x-size/2,noteDrawCanvas.width-size)),y=Math.max(0,Math.min(p.y-size/2,noteDrawCanvas.height-size));noteDrawObjects.push({...noteLogoTemplate,id:'draw-'+crypto.randomUUID(),x1:x,y1:y,x2:x+size,y2:y+size});renderNoteDrawing();}
+    return;
+  }
   if(noteDrawTool==='select'){noteSelectedObjectId=findNoteObject(p)?.id||null;renderNoteDrawing();return;}
   if(noteDrawTool==='eraser'){
     if(noteEraserMode.value==='stroke'){const found=findNoteObject(p);if(found)noteDrawObjects=noteDrawObjects.filter(o=>o.id!==found.id);}else eraseNotePartial(p);
     renderNoteDrawing();return;
   }
   const shape=noteShapeTool.value;
-  noteDrawCurrent=shape!=='none'?{id:`draw-${Date.now()}`,type:shape,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:noteDrawColor.value,width:Number(noteDrawSize.value)}:{id:`draw-${Date.now()}`,type:'stroke',points:[p],color:noteDrawColor.value,width:Number(noteDrawSize.value),ink:noteInkType.value};
+  noteDrawCurrent=shape!=='none'?{id:`draw-${Date.now()}`,type:shape,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:noteDrawColor.value,width:Number(noteDrawSize.value),lineStyle:noteLineStyle}:{id:`draw-${Date.now()}`,type:'stroke',points:[p],color:noteDrawColor.value,width:Number(noteDrawSize.value),ink:noteInkType.value,lineStyle:noteLineStyle};
 });
 noteDrawCanvas.addEventListener('pointermove',e=>{
   if(!noteDrawing)return;
@@ -4608,6 +4634,7 @@ noteDrawCanvas.addEventListener('pointermove',e=>{
   }
   if(noteDrawTool==='select'&&noteSelectedObjectId){const o=noteDrawObjects.find(x=>x.id===noteSelectedObjectId);if(o){moveNoteObject(o,p.x-notePointerStart.x,p.y-notePointerStart.y);notePointerStart=p;renderNoteDrawing();}return;}
   if(noteDrawTool==='eraser'){if(noteEraserMode.value==='stroke'){const found=findNoteObject(p);if(found)noteDrawObjects=noteDrawObjects.filter(o=>o.id!==found.id);}else eraseNotePartial(p);renderNoteDrawing();return;}
+  if(noteDrawTool==='stamp')return;
   if(!noteDrawCurrent)return;if(noteDrawCurrent.type==='stroke')noteDrawCurrent.points.push(p);else{noteDrawCurrent.x2=p.x;noteDrawCurrent.y2=p.y;}renderNoteDrawing();
 });
 function finishNoteDrawing(){
@@ -4622,7 +4649,7 @@ function finishNoteDrawing(){
 }
 noteDrawCanvas.addEventListener('pointerup',finishNoteDrawing);
 noteDrawCanvas.addEventListener('pointercancel',finishNoteDrawing);
-function selectNoteDrawTool(tool){clearNoteArea();noteSelectedObjectId=null;noteDrawTool=tool;updateNoteAreaTools();renderNoteDrawing();noteDrawPen.classList.toggle('active',tool==='pen');noteDrawEraser.classList.toggle('active',tool==='eraser');noteDrawPan.classList.toggle('active',tool==='pan');noteDrawSelect.classList.toggle('active',tool==='select');noteDrawCanvas.style.cursor=tool==='pan'?'grab':tool==='select'?'default':tool==='eraser'?'cell':'crosshair';}
+function selectNoteDrawTool(tool){clearNoteArea();noteSelectedObjectId=null;noteDrawTool=tool;updateNoteAreaTools();renderNoteDrawing();noteDrawPen.classList.toggle('active',tool==='pen');noteDrawEraser.classList.toggle('active',tool==='eraser');noteDrawPan.classList.toggle('active',tool==='pan');noteDrawSelect.classList.toggle('active',tool==='select');noteDrawCanvas.style.cursor=tool==='pan'?'grab':tool==='select'?'default':tool==='eraser'?'cell':'crosshair';noteDrawingToolbar?.refresh();}
 noteDrawPen.addEventListener('click',()=>{noteShapeTool.value='none';selectNoteDrawTool('pen');});
 noteDrawEraser.addEventListener('click',()=>selectNoteDrawTool('eraser'));
 noteDrawPan.addEventListener('click',()=>selectNoteDrawTool('pan'));
@@ -9005,6 +9032,16 @@ initializePostMediaViewer({
   currentProfile:()=>currentUid&&state.users[currentUid]?{...state.users[currentUid],uid:currentUid}:null,
   person:(uid,name)=>({name:state.users[uid]?.name||name||'Integrante',photo:state.users[uid]?.photo||null}),
   openProfile:openViewProfile
+});
+
+noteDrawingToolbar=initializeDrawingToolbar({
+  toolbar:noteToolbar,areaTools:noteAreaTools,pen:noteDrawPen,eraser:noteDrawEraser,pan:noteDrawPan,select:noteDrawSelect,
+  color:noteDrawColor,size:noteDrawSize,ink:noteInkType,eraserMode:noteEraserMode,shape:noteShapeTool,
+  undo:noteDrawUndo,redo:noteDrawRedo,clear:noteDrawClear,zoomIn:noteZoomIn,zoomOut:noteZoomOut,zoomLabel:noteZoomLabel,
+  getState:()=>({tool:noteDrawTool,lineStyle:noteLineStyle,hasArea:!!noteAreaRect}),setTool:selectNoteDrawTool,
+  setLineStyle:value=>{noteLineStyle=value;},
+  stamp:async()=>{try{await prepareNoteLogo();selectNoteDrawTool('stamp');noteAreaHint.textContent='Toque no quadro para carimbar a logo do Hub.';}catch{noteAreaHint.textContent='Não foi possível carregar a logo. Tente novamente.';}},
+  close:()=>setNoteStudioMode('text')
 });
 </script>
 </body>
