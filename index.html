@@ -4113,7 +4113,10 @@ forgotPasswordLink.addEventListener('click', ()=>{
   forgotPasswordLink.disabled = true;
   showForgotPasswordMsg('Enviando...', false, 'pending');
   sendPasswordResetEmail(auth, email)
-    .then(result=>showForgotPasswordMsg(result.message, false))
+    .then(()=>{
+      try { sessionStorage.setItem('hub-reset-email', email); } catch {}
+      location.assign('/reset-password');
+    })
     .catch(err=>showForgotPasswordMsg(err.message, true))
     .finally(()=>{ forgotPasswordLink.disabled = false; });
 });

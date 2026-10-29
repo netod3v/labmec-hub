@@ -79,7 +79,7 @@ class ResetMailQueueTests(unittest.TestCase):
             self.assertEqual(self.worker(second).json['sent'], 1)
             smtp.assert_called_once()
             self.assertEqual(smtp.call_args.args[1], 'alice@example.org')
-            self.assertIn('/reset-password#token=', smtp.call_args.args[2])
+            self.assertRegex(smtp.call_args.args[2], r'^[0-9]{6}$')
         self.assertEqual(self.jobs(), [])
 
     def test_smtp_holds_no_database_transaction(self):

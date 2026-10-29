@@ -26,7 +26,7 @@ a resposta nesse modo. O servidor local mantém o modo `thread` para compatibili
    Não compartilhe cabeçalhos, registros do Vault ou a fila de requisições.
 6. Depois da primeira chamada válida, solicite a recuperação pela tela de
    entrada de uma conta de teste sua e confira recebimento, redefinição e
-   rejeição do mesmo link após o uso. Essa validação real exige sua ação;
+   validação do código de seis dígitos, redefinição e rejeição do código após o uso. Essa validação real exige sua ação;
    os testes automatizados não enviam e-mails.
 
 O agendamento não é criado automaticamente ao publicar o código. A API retorna
@@ -45,7 +45,7 @@ não atende ao prazo de recuperação.
 - Pedidos ficam em coleções internas da tabela `documents`; não é necessária
   uma tabela nova nem migração de dados para ativar a fila.
 - A fila armazena ID da conta, versão da sessão, horários e estado. Não guarda
-  senha, e-mail, credenciais SMTP nem o link de recuperação.
+  senha, e-mail, credenciais SMTP nem código em texto puro.
 - Solicitações repetidas para a mesma conta com um pedido pendente são agrupadas.
 - Processadores concorrentes usam `FOR UPDATE SKIP LOCKED` e reservas de dois
   minutos. Uma reserva abandonada pode ser retomada; a confirmação de um
@@ -62,8 +62,17 @@ não atende ao prazo de recuperação.
   condições normais; essa é uma capacidade inicial, não um teste de carga.
 - A entrega é **pelo menos uma vez**: se o SMTP aceitar a mensagem e o processo
   cair antes da confirmação no banco, uma mensagem pode ser reenviada. Não existe
-  garantia de envio exatamente uma vez com SMTP. Cada link tem validade de 30
-  minutos a partir da geração; mudar a senha invalida os links e sessões anteriores.
+  garantia de envio exatamente uma vez com SMTP. Retentativas do mesmo pedido
+  preservam o código e sua expiração, sem renovar as tentativas de verificação.
+- O código de seis dígitos vale dez minutos a partir do preparo para envio, com
+  no máximo cinco verificações erradas. É derivado por HMAC com segredo do servidor
+  e nonce aleatório; o banco privado guarda o nonce, versão, prazo e tentativas,
+  nunca o código em texto puro. Uma solicitação nova após o envio substitui o anterior.
+- Verificar o código uma vez emite uma autorização assinada de cinco minutos,
+  guardada só na memória da página. A troca da senha exige essa autorização e o
+  desafio verificado no banco, consome ambos e invalida sessões anteriores.
+  Travas compartilhadas impedem dois usos concorrentes. Links antigos deixam
+  de funcionar após esta atualização; solicite um código novo.
 - Antes do envio, o processador verifica novamente versão da sessão, bloqueio e
   remoção da conta. Usuários do Hub, inclusive administradores, não podem consultar
   ou escrever a fila pelas rotas genéricas.

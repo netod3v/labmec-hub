@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 import click
 from flask import jsonify, request
-from itsdangerous import URLSafeTimedSerializer
+from .reset_codes import new_nonce, prepare_code
 from werkzeug.exceptions import Unauthorized
 
 JOBS = '_reset_mail_jobs'
@@ -59,7 +59,7 @@ def enqueue_reset_mail(app, user):
             return
         repository.save_document(JOBS, key, {
             'uid': user['id'], 'version': user['session_version'],
-            'status': 'pending', 'createdAt': now, 'expiresAt': now + 1800,
+            'nonce': new_nonce(), 'status': 'pending', 'createdAt': now, 'expiresAt': now + 1800,
             'attempts': 0, 'nextAttempt': now, 'leaseUntil': 0,
         })
 
@@ -68,7 +68,7 @@ def process_reset_mail(app):
     """Claim short leases, release DB connections, then send bounded SMTP work.
 
     Delivery is at least once: a crash after SMTP accepts but before the database
-    acknowledgement may resend. Password links remain single-use by user version.
+    acknowledgement may resend. Verification codes and reset grants remain single-use.
     """
     from .password_reset import send_reset_email
 
@@ -95,11 +95,14 @@ def process_reset_mail(app):
                 repository.finish_reset_mail_job(key, lease)
             result['discarded'] += 1
             continue
-        serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'], salt='labiomec-password-reset-v1')
-        token = serializer.dumps({'uid': user['id'], 'version': job['version']})
+        code = prepare_code(app, user, job.get('nonce', key + ':' + str(job['createdAt'])))
+        if code is None:
+            with app.database.transaction() as repository:
+                repository.finish_reset_mail_job(key, lease)
+            result['discarded'] += 1
+            continue
         try:
-            send_reset_email(app.config, user['email'],
-                             app.config['PUBLIC_ORIGIN'] + '/reset-password#token=' + token)
+            send_reset_email(app.config, user['email'], code)
         except (OSError, smtplib.SMTPException, ValueError):
             job.pop('lease', None)
             job['leaseUntil'] = 0

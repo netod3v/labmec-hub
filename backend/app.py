@@ -185,7 +185,7 @@ def create_app(settings=None, database=None, *, application=None):
                 validate_json(request.get_json())
             except RecursionError:
                 raise BadRequest('Dados com níveis demais de organização.') from None
-        if request.path in {'/api/session', '/api/health', '/api/auth/login', '/api/auth/register', '/api/auth/logout', '/api/auth/forgot-password', '/api/auth/reset-password'}:
+        if request.path in {'/api/session', '/api/health', '/api/auth/login', '/api/auth/register', '/api/auth/logout', '/api/auth/forgot-password', '/api/auth/verify-reset-code', '/api/auth/reset-password'}:
             return
         with app.database.transaction() as repository:
             user = authenticated_user(repository)
