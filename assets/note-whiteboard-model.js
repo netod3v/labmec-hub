@@ -11,7 +11,7 @@ export const WHITEBOARD_SHORTCUTS = [
 export function defaultWhiteboardSettings() {
   return {background:'color',color:'#ffffff',recognize:true,recognizeTypes:['ellipse','rect','triangle','line'],wheel:'zoom',hiddenTools:[],palette:['#111827','#ffffff','#ef4444','#2563eb','#16a34a','#f59e0b','#a855f7'],
     shortcuts:{pan:'Space',zoomModifier:'Control',straight:'Control',undo:'Ctrl+z',redo:'Ctrl+y',delete:'Delete',pen:'p',secondary:'h',eraser:'e',text:'t'},
-    pens:{pen:{color:'#111827',width:4,lineStyle:'solid'},secondary:{color:'#ef4444',width:4,lineStyle:'solid'},highlighter:{color:'#f59e0b',width:9,lineStyle:'solid'}}};
+    pens:{pen:{color:'#111827',width:4,lineStyle:'solid'},secondary:{color:'#ef4444',width:4,lineStyle:'solid'},highlighter:{color:'#111827',width:9,lineStyle:'solid'}}};
 }
 export function normalizeWhiteboardSettings(value) {
   const defaults=defaultWhiteboardSettings(),raw=value&&typeof value==='object'?value:{};
