@@ -190,6 +190,8 @@ Os painéis consultam `/api/sync` a cada 5 segundos com a página visível. Não
 
 ## Busca no header
 
+A seta de retorno do cabeçalho funciona como alternativa ao **Voltar** da tela aberta, quando o cabeçalho está acessível. Usa a mesma ação de retorno de perfis, arquivos, notificações e painéis, preservando o contexto e os rascunhos. Na tela principal, leva ao topo do Hub.
+
 A barra **Pesquisar no hub** reúne resultados em Tudo, Mural, Demandas, Metas, Metas que criei, Pessoas, Arquivos, Notas e Mensagens. O atalho `Ctrl+K` (ou `Cmd+K`) abre o campo. É possível filtrar por criados por mim, atribuídos a mim, concluídos e excluídos. **Metas que criei** considera a autoria da meta, não quem marcou sua conclusão.
 
 A pesquisa ignora diferenças entre maiúsculas e minúsculas e acentos. Todos os termos digitados precisam ser encontrados. Ela procura textos, comentários, nomes de pessoas, nomes de anexos/arquivos, projetos, notas próprias e mensagens das conversas do usuário. Não extrai conteúdo interno de PDFs, imagens ou vídeos. Demandas pessoais também aparecem em Demandas. Demandas excluídas aparecem apenas com o filtro Excluídos; as finalizadas podem ser encontradas no histórico.
