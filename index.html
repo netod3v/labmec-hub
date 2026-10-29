@@ -3462,7 +3462,7 @@ import { editContactNickname } from './assets/contact-nickname.js';
 import { initializeMessageMenu, animateMessageRemoval } from './assets/message-menu.js';
 import { postMatchesMediaType, attachmentMatchesType } from './assets/mural-media-filter.js';
 import { initializeNoteDocumentTools, sanitizeNoteHtml } from './assets/note-document.js';
-import { drawingRect, containsDrawingPoint, drawingSize } from './assets/note-drawing-area.js';
+import { drawingRect, containsDrawingPoint, drawingSize, drawingShortcut } from './assets/note-drawing-area.js';
 import { initializeCompactNoteEditor } from './assets/note-compact-editor.js';
 import { initializeHeaderTooltips } from './assets/header-tooltips.js';
 import { initializeFirstPostCelebration } from './assets/first-post-celebration.js';
@@ -3580,6 +3580,13 @@ const noteShapeTool = document.getElementById('note-shape-tool');
 const noteDrawSize = document.getElementById('note-draw-size');
 const noteDrawClear = document.getElementById('note-draw-clear');
 const noteDrawUndo = document.getElementById('note-draw-undo');
+noteDrawUndo.title='Desfazer (Ctrl+Z)';
+noteDrawUndo.insertAdjacentHTML('afterend','<button class="whiteboard-tool" id="note-draw-redo" type="button" title="Refazer (Ctrl+Y)" aria-label="Refazer"><svg viewBox="0 0 24 24"><path d="m15 7 5 5-5 5M19 12h-8a6 6 0 0 0-6 6"/></svg></button>');
+const noteDrawRedo=document.getElementById('note-draw-redo');
+noteDrawCanvas.tabIndex=0;
+noteDrawCanvas.setAttribute('aria-label','Quadro de desenho. Ctrl+C copia a ?rea selecionada; Ctrl+V cola; Ctrl+Z desfaz; Ctrl+Y refaz.');
+noteAreaTools.querySelector('[data-area-action="copy"]').title='Copiar ?rea (Ctrl+C)';
+noteAreaTools.querySelector('[data-area-action="paste"]').title='Colar ?rea (Ctrl+V)';
 const noteDrawPen = document.getElementById('note-draw-pen');
 const noteDrawEraser = document.getElementById('note-draw-eraser');
 const noteDrawViewport = document.getElementById('note-draw-viewport');
@@ -4371,6 +4378,8 @@ let notePointerStart = null;
 let notePanStart = null;
 let noteLegacyImage = null;
 const noteDrawHistory = new Map();
+const noteDrawRedoHistory = new Map();
+let noteDrawPendingHistory = null;
 let noteAreaRect = null, noteAreaStart = null, noteAreaMoving = false;
 let noteAreaClipboard = null;
 let noteEraseCanvas = null;
@@ -4385,6 +4394,9 @@ function noteBitmap(source){
 }
 function noteDrawingReady(){return (!noteLegacyImage||(noteLegacyImage.complete&&noteLegacyImage.naturalWidth>0))&&noteDrawObjects.every(o=>o.type!=='bitmap'||(noteBitmap(o.source) instanceof HTMLCanvasElement||(noteBitmap(o.source)?.complete&&noteBitmap(o.source)?.naturalWidth>0)));}
 function updateNoteAreaTools(){
+  const id=getActiveTab()?.id;
+  noteDrawUndo.disabled=!(noteDrawHistory.get(id)?.length);
+  noteDrawRedo.disabled=!(noteDrawRedoHistory.get(id)?.length);
   const valid=noteAreaRect&&noteAreaRect.width>=2&&noteAreaRect.height>=2&&noteDrawingReady();
   noteAreaTools.querySelector('[data-area-action="crop"]').disabled=!valid;
   noteAreaTools.querySelector('[data-area-action="copy"]').disabled=!valid;
@@ -4418,6 +4430,7 @@ function detachNoteArea(){
 function clearNoteArea(){noteAreaRect=null;noteAreaStart=null;noteAreaMoving=false;noteAreaHint.textContent='';updateNoteAreaTools();}
 function noteDrawingState(){return {objects:cloneNoteObjects(noteDrawObjects),width:noteDrawCanvas.width,height:noteDrawCanvas.height,legacy:noteLegacyImage?.src||null};}
 function restoreNoteDrawing(snapshot){
+  noteDrawPendingHistory=null;
   noteDrawObjects=cloneNoteObjects(snapshot.objects);noteDrawCanvas.width=snapshot.width;noteDrawCanvas.height=snapshot.height;
   noteLegacyImage=null;if(snapshot.legacy){noteLegacyImage=new Image();noteLegacyImage.onload=()=>{renderNoteDrawing();updateNoteAreaTools();};noteLegacyImage.src=snapshot.legacy;}
   noteSelectedObjectId=null;clearNoteArea();applyNoteDrawZoom();saveNoteDrawing();
@@ -4455,11 +4468,15 @@ function renderNoteDrawing(){
   if(noteAreaRect){const r=noteAreaRect;ctx.save();ctx.strokeStyle='#2563eb';ctx.lineWidth=2/noteDrawZoom;ctx.setLineDash([7/noteDrawZoom,5/noteDrawZoom]);ctx.strokeRect(r.x,r.y,r.width,r.height);ctx.restore();}
 }
 function pushNoteDrawingHistory(){
-  const id=getActiveTab()?.id;if(!id)return;
-  const history=noteDrawHistory.get(id)||[];history.push(noteDrawingState());
-  if(history.length>20)history.shift();noteDrawHistory.set(id,history);
+  if(getActiveTab())noteDrawPendingHistory=noteDrawingState();
 }
-function saveNoteDrawing(){if(noteEraseCanvas){noteDrawObjects=[noteBitmapObject(noteEraseCanvas)];noteEraseCanvas=null;}const tab=getActiveTab();if(tab){tab.drawingObjects=cloneNoteObjects(noteDrawObjects);tab.drawingWidth=noteDrawCanvas.width;tab.drawingHeight=noteDrawCanvas.height;if(noteLegacyImage)tab.drawing=noteLegacyImage.src;else delete tab.drawing;saveNoteState();}renderNoteDrawing();updateNoteAreaTools();}
+function saveNoteDrawing(){if(noteEraseCanvas){noteDrawObjects=[noteBitmapObject(noteEraseCanvas)];noteEraseCanvas=null;}const tab=getActiveTab();if(tab){
+  if(noteDrawPendingHistory&&JSON.stringify(noteDrawPendingHistory)!==JSON.stringify(noteDrawingState())){
+    const history=noteDrawHistory.get(tab.id)||[];history.push(noteDrawPendingHistory);
+    if(history.length>20)history.shift();noteDrawHistory.set(tab.id,history);noteDrawRedoHistory.set(tab.id,[]);
+  }
+  noteDrawPendingHistory=null;
+  tab.drawingObjects=cloneNoteObjects(noteDrawObjects);tab.drawingWidth=noteDrawCanvas.width;tab.drawingHeight=noteDrawCanvas.height;if(noteLegacyImage)tab.drawing=noteLegacyImage.src;else delete tab.drawing;saveNoteState();}renderNoteDrawing();updateNoteAreaTools();}
 function distanceToSegment(p,a,b){const l=(b.x-a.x)**2+(b.y-a.y)**2;if(!l)return Math.hypot(p.x-a.x,p.y-a.y);let t=((p.x-a.x)*(b.x-a.x)+(p.y-a.y)*(b.y-a.y))/l;t=Math.max(0,Math.min(1,t));return Math.hypot(p.x-(a.x+t*(b.x-a.x)),p.y-(a.y+t*(b.y-a.y)));}
 function hitNoteObject(o,p,r=12){
   if(o.type==='stroke')return o.points.some((q,i)=>i&&distanceToSegment(p,o.points[i-1],q)<r+(o.width||5)/2);
@@ -4488,7 +4505,7 @@ function renderNoteStudio(){
   if(!tab) return;
   noteDrawCanvas.width=drawingSize(tab.drawingWidth)||1400;
   noteDrawCanvas.height=drawingSize(tab.drawingHeight)||760;
-  clearNoteArea();noteAreaClipboard=null;noteBitmapCache.clear();updateNoteAreaTools();
+  noteDrawPendingHistory=null;clearNoteArea();noteAreaClipboard=null;noteBitmapCache.clear();updateNoteAreaTools();
   noteDrawObjects = cloneNoteObjects(tab.drawingObjects);
   noteSelectedObjectId = null;
   noteLegacyImage=null;if(tab.drawing){noteLegacyImage=new Image();noteLegacyImage.onload=()=>{renderNoteDrawing();updateNoteAreaTools();};noteLegacyImage.src=tab.drawing;}
@@ -4557,6 +4574,7 @@ noteRichEditor.addEventListener('input',saveRichNote);
 const noteDocumentTools=initializeNoteDocumentTools({editor:noteRichEditor,toolbar:noteFormatBar,modal:noteStudioModal,getDocumentId:()=>currentUid+':'+getActiveTab()?.id,getTitle:()=>getActiveTab()?.title || 'Nota',save:saveRichNote,command:(name,value)=>{document.execCommand(name,false,value);saveRichNote();}});
 onAuthStateChanged(auth,()=>noteDocumentTools.closeDialog());
 noteDrawCanvas.addEventListener('pointerdown',e=>{
+  noteDrawCanvas.focus({preventScroll:true});
   const p=notePoint(e);noteDrawing=true;noteDrawCanvas.setPointerCapture(e.pointerId);notePointerStart=p;
   if(noteDrawTool==='pan'){notePanStart={x:e.clientX,y:e.clientY,left:noteDrawViewport.scrollLeft,top:noteDrawViewport.scrollTop};return;}
   if(noteDrawTool==='area'||noteDrawTool==='crop'){
@@ -4617,7 +4635,7 @@ noteAreaTools.addEventListener('click',event=>{
   if(action==='paste'&&noteAreaClipboard){
     pushNoteDrawingHistory();const object=cloneNoteObjects([noteAreaClipboard])[0];object.id='draw-'+crypto.randomUUID();
     const width=object.x2-object.x1,height=object.y2-object.y1;
-    if(width>noteDrawCanvas.width||height>noteDrawCanvas.height){noteDrawHistory.get(getActiveTab()?.id)?.pop();noteAreaHint.textContent='A área copiada é maior que este quadro. Desfaça o recorte para colar.';return;}
+    if(width>noteDrawCanvas.width||height>noteDrawCanvas.height){noteDrawPendingHistory=null;noteAreaHint.textContent='A área copiada é maior que este quadro. Desfaça o recorte para colar.';return;}
     const x=Math.min(object.x1+20,noteDrawCanvas.width-width),y=Math.min(object.y1+20,noteDrawCanvas.height-height);
     moveNoteObject(object,x-object.x1,y-object.y1);noteDrawObjects.push(object);noteSelectedObjectId=object.id;
     noteDrawTool='area';noteAreaRect={x,y,width,height};saveNoteDrawing();return;
@@ -4631,12 +4649,33 @@ noteAreaTools.addEventListener('click',event=>{
     noteDrawCanvas.width=piece.width;noteDrawCanvas.height=piece.height;noteDrawObjects=[noteBitmapObject(piece)];applyNoteDrawZoom();
   }else if(action==='delete'){
     snapshot.getContext('2d').clearRect(noteAreaRect.x,noteAreaRect.y,noteAreaRect.width,noteAreaRect.height);noteDrawObjects=[noteBitmapObject(snapshot)];
-  }else{noteDrawHistory.get(getActiveTab()?.id)?.pop();return;}
+  }else{noteDrawPendingHistory=null;return;}
   noteLegacyImage=null;noteSelectedObjectId=null;clearNoteArea();saveNoteDrawing();
 });
 noteInkType.addEventListener('change',()=>{noteShapeTool.value='none';selectNoteDrawTool('pen');});
 noteShapeTool.addEventListener('change',()=>{if(noteShapeTool.value!=='none')selectNoteDrawTool('pen');});
-noteDrawUndo.addEventListener('click',()=>{const id=getActiveTab()?.id,history=id?(noteDrawHistory.get(id)||[]):[];if(history.length)restoreNoteDrawing(history.pop());});
+function undoNoteDrawing(){
+  if(noteDrawing||!noteDrawingReady())return;
+  const id=getActiveTab()?.id,history=noteDrawHistory.get(id)||[];if(!history.length)return;
+  const redo=noteDrawRedoHistory.get(id)||[];redo.push(noteDrawingState());noteDrawRedoHistory.set(id,redo);
+  restoreNoteDrawing(history.pop());
+}
+function redoNoteDrawing(){
+  if(noteDrawing||!noteDrawingReady())return;
+  const id=getActiveTab()?.id,redo=noteDrawRedoHistory.get(id)||[];if(!redo.length)return;
+  const history=noteDrawHistory.get(id)||[];history.push(noteDrawingState());noteDrawHistory.set(id,history);
+  restoreNoteDrawing(redo.pop());
+}
+noteDrawUndo.addEventListener('click',undoNoteDrawing);
+noteDrawRedo.addEventListener('click',redoNoteDrawing);
+noteStudioModal.addEventListener('keydown',event=>{
+  if(event.defaultPrevented||noteStudioModal.classList.contains('hidden')||noteStudioBody.dataset.mode!=='draw'||noteDrawing)return;
+  if(event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])'))return;
+  const action=drawingShortcut(event);if(!action)return;
+  event.preventDefault();event.stopPropagation();
+  if(action==='undo')undoNoteDrawing();else if(action==='redo')redoNoteDrawing();
+  else noteAreaTools.querySelector('[data-area-action="'+action+'"]').click();
+});
 noteDrawClear.addEventListener('click',()=>{pushNoteDrawingHistory();noteDrawObjects=[];noteSelectedObjectId=null;noteLegacyImage=null;clearNoteArea();const tab=getActiveTab();if(tab)delete tab.drawing;saveNoteDrawing();});
 noteZoomOut.addEventListener('click',()=>{noteDrawZoom=Math.max(.5,noteDrawZoom-.25);applyNoteDrawZoom();});
 noteZoomIn.addEventListener('click',()=>{noteDrawZoom=Math.min(2,noteDrawZoom+.25);applyNoteDrawZoom();});

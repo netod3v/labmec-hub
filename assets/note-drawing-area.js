@@ -15,3 +15,13 @@ export function containsDrawingPoint(rect, point) {
 export function drawingSize(value) {
   return Number.isInteger(value) && value >= 1 && value <= 4096 ? value : null;
 }
+
+export function drawingShortcut(event) {
+  if ((!event.ctrlKey && !event.metaKey) || event.altKey || event.isComposing) return null;
+  const key = event.key.toLowerCase();
+  if (key === 'z') return event.shiftKey ? 'redo' : 'undo';
+  if (key === 'y' && !event.shiftKey) return 'redo';
+  if (!event.shiftKey && key === 'c') return 'copy';
+  if (!event.shiftKey && key === 'v') return 'paste';
+  return null;
+}

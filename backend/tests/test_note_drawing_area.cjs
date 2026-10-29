@@ -8,7 +8,7 @@ const source = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const geometry = fs.readFileSync(path.join(root, 'assets/note-drawing-area.js'), 'utf8').replace(/export /g, '');
 const core = source.slice(source.indexOf('let noteSavedRange = null;'), source.indexOf('function renderNoteStudio(){'));
 const handlers = source.slice(source.indexOf("noteDrawCanvas.addEventListener('pointerdown'"), source.indexOf('function updateActiveTabTitle(){'));
-const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect','noteDrawUndo','noteDrawClear','noteZoomIn','noteZoomOut','noteInkType','noteEraserMode','noteShapeTool','noteDrawSize','noteDrawColor'];
+const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect','noteDrawUndo','noteDrawRedo','noteDrawClear','noteZoomIn','noteZoomOut','noteInkType','noteEraserMode','noteShapeTool','noteDrawSize','noteDrawColor'];
 
 (async()=>{
   const browser = await chromium.launch({headless:true, executablePath:process.env.EDGE_EXECUTABLE});
@@ -19,7 +19,8 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     await page.goto('http://localhost/drawing-test');
     await page.setContent('<canvas width="1400" height="760" style="touch-action:none"></canvas><div id="controls"></div>');
     await page.evaluate(({core,handlers,geometry,controls})=>{
-      const noteDrawCanvas=document.querySelector('canvas');
+      const noteDrawCanvas=document.querySelector('canvas');noteDrawCanvas.tabIndex=0;
+      const noteStudioModal=document.body,noteStudioBody=document.body;noteStudioBody.dataset.mode='draw';
       const noteDrawViewport=document.body;
       const noteZoomLabel=document.createElement('span');
       const noteAreaTools=document.getElementById('controls');
@@ -32,7 +33,7 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
       const getActiveTab=()=>tab,saveNoteState=()=>{saves++;};
       const code=geometry+'\n'+core+'\n'+handlers+`
         window.drawingTest={
-          seed(){noteDrawCanvas.width=1400;noteDrawCanvas.height=760;noteDrawObjects=[{id:'line',type:'stroke',points:[{x:0,y:50},{x:150,y:50}],width:6,color:'#ff0000'}];noteLegacyImage=null;noteSelectedObjectId=null;clearNoteArea();noteDrawHistory.clear();noteDrawZoom=1;applyNoteDrawZoom();renderNoteDrawing();},
+          seed(){noteDrawCanvas.width=1400;noteDrawCanvas.height=760;noteDrawObjects=[{id:'line',type:'stroke',points:[{x:0,y:50},{x:150,y:50}],width:6,color:'#ff0000'}];noteLegacyImage=null;noteSelectedObjectId=null;clearNoteArea();noteDrawHistory.clear();noteDrawRedoHistory.clear();noteDrawPendingHistory=null;noteDrawZoom=1;applyNoteDrawZoom();renderNoteDrawing();},
           tool:selectNoteDrawTool,
           undo(){noteDrawUndo.click();},
           pixel(x,y){return [...noteDrawingSnapshot().getContext('2d').getImageData(x,y,1,1).data];},
@@ -44,7 +45,7 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
         };
       `;
       // Tests execute the editor's actual functions and pointer/button handlers.
-      new Function('noteDrawCanvas','noteDrawViewport','noteZoomLabel','noteAreaTools','noteAreaHint','getActiveTab','saveNoteState',...controls,code)(noteDrawCanvas,noteDrawViewport,noteZoomLabel,noteAreaTools,noteAreaHint,getActiveTab,saveNoteState,...controls.map(x=>elements[x]));
+      new Function('noteStudioModal','noteStudioBody','noteDrawCanvas','noteDrawViewport','noteZoomLabel','noteAreaTools','noteAreaHint','getActiveTab','saveNoteState',...controls,code)(noteStudioModal,noteStudioBody,noteDrawCanvas,noteDrawViewport,noteZoomLabel,noteAreaTools,noteAreaHint,getActiveTab,saveNoteState,...controls.map(x=>elements[x]));
     },{core,handlers,geometry,controls});
     const run=(fn)=>page.evaluate(fn);
     async function drag(x1,y1,x2,y2){
@@ -116,7 +117,37 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     assert.equal((await run(()=>drawingTest.pixel(100,100)))[3],255,'legacy image restored by undo');
     await run(()=>drawingTest.clear());await run(()=>drawingTest.undo());
     assert.equal((await run(()=>drawingTest.pixel(100,100)))[3],255,'clear can be undone for legacy drawing');
+
+    await run(()=>{drawingTest.seed();drawingTest.tool('area');});
+    await drag(20,30,80,70);
+    await page.keyboard.press('Control+c');await page.keyboard.press('Control+v');
+    assert.equal((await run(()=>drawingTest.state())).objects,2,'Ctrl+C and Ctrl+V copy the area');
+    await page.keyboard.press('Control+z');
+    assert.equal((await run(()=>drawingTest.state())).objects,1,'Ctrl+Z undoes paste');
+    await page.keyboard.press('Control+y');
+    assert.equal((await run(()=>drawingTest.state())).objects,2,'Ctrl+Y redoes paste');
+    await page.keyboard.press('Control+z');await page.keyboard.press('Control+Shift+z');
+    assert.equal((await run(()=>drawingTest.state())).objects,2,'Ctrl+Shift+Z also redoes');
+    await page.keyboard.press('Control+z');
+    await run(()=>drawingTest.clear());await page.keyboard.press('Control+y');
+    assert.equal((await run(()=>drawingTest.state())).objects,0,'a new edit discards the redo branch');
+    await page.keyboard.press('Control+z');
+    assert.equal((await run(()=>drawingTest.state())).objects,1);
+
+    // Keyboard events for text and hidden editors must remain untouched.
+    const native=await page.evaluate(()=>{
+      const input=document.createElement('textarea');document.body.append(input);input.focus();
+      const event=new KeyboardEvent('keydown',{key:'z',ctrlKey:true,bubbles:true,cancelable:true});input.dispatchEvent(event);
+      const textPrevented=event.defaultPrevented;input.remove();
+      document.body.dataset.mode='text';
+      const textMode=new KeyboardEvent('keydown',{key:'v',ctrlKey:true,bubbles:true,cancelable:true});document.body.dispatchEvent(textMode);
+      document.body.dataset.mode='draw';document.body.classList.add('hidden');
+      const hidden=new KeyboardEvent('keydown',{key:'z',ctrlKey:true,bubbles:true,cancelable:true});document.body.dispatchEvent(hidden);
+      document.body.classList.remove('hidden');
+      return {textPrevented,textModePrevented:textMode.defaultPrevented,hiddenPrevented:hidden.defaultPrevented};
+    });
+    assert.deepEqual(native,{textPrevented:false,textModePrevented:false,hiddenPrevented:false});
     assert.deepEqual(errors,[]);
-    console.log('PASS: crop, reverse drag, zoom, touch, empty selection, copy/paste, partial delete, move, persistence, legacy drawing and undo');
+    console.log('PASS: crop, zoom, touch, copy/paste, partial delete, move, persistence, legacy, undo/redo, shortcuts and text field isolation');
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
