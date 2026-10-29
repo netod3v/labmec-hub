@@ -9,13 +9,13 @@ export const WHITEBOARD_SHORTCUTS = [
   ['pen','Caneta 1'],['secondary','Caneta 2'],['eraser','Borracha'],['text','Nova caixa de texto']
 ];
 export function defaultWhiteboardSettings() {
-  return {laserWidth:4,background:'color',color:'#ffffff',recognize:true,recognizeTypes:['ellipse','rect','triangle','line'],wheel:'zoom',hiddenTools:[],palette:['#111827','#ffffff','#ef4444','#2563eb','#16a34a','#f59e0b','#a855f7'],
+  return {laserWidth:4,gridColor:'#cbd5e1',dotsColor:'#94a3b8',background:'white',color:'#ffffff',recognize:true,recognizeTypes:['ellipse','rect','triangle','line'],wheel:'zoom',hiddenTools:[],palette:['#111827','#ffffff','#ef4444','#2563eb','#16a34a','#f59e0b','#a855f7'],
     shortcuts:{pan:'Space',zoomModifier:'Control',straight:'Control',undo:'Ctrl+z',redo:'Ctrl+y',delete:'Delete',pen:'p',secondary:'h',eraser:'e',text:'t'},
     pens:{pen:{color:'#111827',width:4,lineStyle:'solid'},secondary:{color:'#ef4444',width:4,lineStyle:'solid'},highlighter:{color:'#111827',width:20,lineStyle:'solid',opacity:.4}}};
 }
 export function normalizeWhiteboardSettings(value) {
   const defaults=defaultWhiteboardSettings(),raw=value&&typeof value==='object'?value:{};
-  const settings={...defaults,laserWidth:Number.isFinite(raw.laserWidth)&&raw.laserWidth>=1&&raw.laserWidth<=30?raw.laserWidth:4,background:['grid','dots','color'].includes(raw.background)?raw.background:defaults.background,
+  const settings={...defaults,laserWidth:Number.isFinite(raw.laserWidth)&&raw.laserWidth>=1&&raw.laserWidth<=30?raw.laserWidth:4,gridColor:/^#[a-f\d]{6}$/i.test(raw.gridColor)?raw.gridColor:defaults.gridColor,dotsColor:/^#[a-f\d]{6}$/i.test(raw.dotsColor)?raw.dotsColor:defaults.dotsColor,background:['white','grid','dots','color'].includes(raw.background)?raw.background:defaults.background,
     color:/^#[a-f\d]{6}$/i.test(raw.color)?raw.color:defaults.color,recognize:typeof raw.recognize==='boolean'?raw.recognize:true,
     wheel:['none','pan','zoom'].includes(raw.wheel)?raw.wheel:'zoom',
     recognizeTypes:Array.isArray(raw.recognizeTypes)?raw.recognizeTypes.filter(x=>['ellipse','rect','triangle','line'].includes(x)):defaults.recognizeTypes,
@@ -78,9 +78,9 @@ export function recognizedInk(object,allowed) {
   return {...object,type:candidate.type,points:undefined,...b};
 }
 export function drawWhiteboardBackground(ctx,width,height,settings) {
-  ctx.save();ctx.fillStyle=settings.color;ctx.fillRect(0,0,width,height);
-  if(settings.background==='grid'){ctx.strokeStyle='#94a3b844';ctx.lineWidth=1;ctx.beginPath();for(let x=0;x<=width;x+=24){ctx.moveTo(x,0);ctx.lineTo(x,height);}for(let y=0;y<=height;y+=24){ctx.moveTo(0,y);ctx.lineTo(width,y);}ctx.stroke();}
-  if(settings.background==='dots'){ctx.fillStyle='#94a3b8';for(let x=12;x<width;x+=24)for(let y=12;y<height;y+=24){ctx.beginPath();ctx.arc(x,y,1,0,Math.PI*2);ctx.fill();}}
+  ctx.save();ctx.fillStyle=settings.background==='white'?'#ffffff':settings.color;ctx.fillRect(0,0,width,height);
+  if(settings.background==='grid'){ctx.strokeStyle=settings.gridColor||'#cbd5e1';ctx.lineWidth=1;ctx.beginPath();for(let x=0;x<=width;x+=24){ctx.moveTo(x,0);ctx.lineTo(x,height);}for(let y=0;y<=height;y+=24){ctx.moveTo(0,y);ctx.lineTo(width,y);}ctx.stroke();}
+  if(settings.background==='dots'){ctx.fillStyle=settings.dotsColor||'#94a3b8';for(let x=12;x<width;x+=24)for(let y=12;y<height;y+=24){ctx.beginPath();ctx.arc(x,y,1,0,Math.PI*2);ctx.fill();}}
   ctx.restore();
 }
 export function drawWhiteboardSolid(ctx,o) {

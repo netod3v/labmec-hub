@@ -14,14 +14,26 @@ export function openWhiteboardSettings({host,getSettings,setSettings}) {
   form.append(heading,tabs,content,message,footer);dialog.append(form);
   let active='board';
   const tabButtons=[];
-  for(const [id,title] of [['board','Quadro'],['tools','Ferramentas'],['keys','Atalhos']]){const button=document.createElement('button');button.type='button';button.textContent=title;button.setAttribute('role','tab');button.onclick=()=>render(id);tabs.append(button);tabButtons.push([button,id]);}
+  for(const [id,title] of [['board','Fundo'],['behavior','Comportamento'],['tools','Ferramentas'],['keys','Atalhos']]){const button=document.createElement('button');button.type='button';button.textContent=title;button.setAttribute('role','tab');button.onclick=()=>render(id);tabs.append(button);tabButtons.push([button,id]);}
   function section(title){const section=document.createElement('section');const heading=document.createElement('h3');heading.textContent=title;section.append(heading);content.append(section);return section;}
   function checkbox(parent,text,checked,change){const label=document.createElement('label');label.className='note-board-check';const input=document.createElement('input');input.type='checkbox';input.checked=checked;input.onchange=()=>change(input.checked);label.append(input,document.createTextNode(text));parent.append(label);return input;}
   function render(id){active=id;editing=null;content.replaceChildren();message.textContent='';for(const [button,key] of tabButtons)button.setAttribute('aria-selected',String(id===key));
     if(id==='board'){
-      const background=section('Fundo do quadro');const select=document.createElement('select');select.setAttribute('aria-label','Tipo de fundo');
-      for(const [value,label] of [['color','Cor lisa'],['grid','Quadriculado'],['dots','Pontinhos']])select.add(new Option(label,value));select.value=draft.background;select.onchange=()=>draft.background=select.value;
-      const color=document.createElement('input');color.type='color';color.value=draft.color;color.setAttribute('aria-label','Cor do fundo');color.oninput=()=>draft.color=color.value;background.append(select,color);
+      const background=section('Tipo de fundo');
+      const choices=document.createElement('div');choices.className='note-background-choices';choices.setAttribute('role','group');choices.setAttribute('aria-label','Tipo de fundo');
+      for(const [value,label] of [['white','Branco'],['grid','Quadriculado'],['dots','Pontinhos'],['color','Cor']]){
+        const button=document.createElement('button');button.type='button';button.className='note-background-choice';button.setAttribute('aria-pressed',String(draft.background===value));
+        const preview=document.createElement('span');preview.className='note-background-preview';preview.dataset.background=value;
+        preview.style.setProperty('--background-color',value==='white'?'#ffffff':draft.color);preview.style.setProperty('--pattern-color',value==='grid'?draft.gridColor:draft.dotsColor);
+        button.append(preview,document.createTextNode(label));button.onclick=()=>{draft.background=value;render('board');};choices.append(button);
+      }
+      background.append(choices);
+      const colors=document.createElement('div');colors.className='note-background-colors';background.append(colors);
+      function colorField(title,key){const label=document.createElement('label');label.append(document.createTextNode(title));const input=document.createElement('input');input.type='color';input.value=draft[key];input.setAttribute('aria-label',title);input.oninput=()=>{draft[key]=input.value;for(const preview of choices.querySelectorAll('.note-background-preview')){preview.style.setProperty('--background-color',preview.dataset.background==='white'?'#ffffff':draft.color);preview.style.setProperty('--pattern-color',preview.dataset.background==='grid'?draft.gridColor:draft.dotsColor);}};label.append(input);colors.append(label);}
+      if(draft.background!=='white')colorField('Cor do fundo','color');
+      if(draft.background==='grid')colorField('Cor das linhas','gridColor');
+      if(draft.background==='dots')colorField('Cor dos pontinhos','dotsColor');
+    }else if(id==='behavior'){
       const recognition=section('Reconhecimento de formas · Ink to Shape');checkbox(recognition,'Reconhecer formas ao segurar o traço parado por meio segundo',draft.recognize,value=>draft.recognize=value);
       for(const [key,label] of [['ellipse','Círculo'],['rect','Retângulo'],['triangle','Triângulo'],['line','Linha reta']])checkbox(recognition,label,draft.recognizeTypes.includes(key),value=>{draft.recognizeTypes=draft.recognizeTypes.filter(x=>x!==key);if(value)draft.recognizeTypes.push(key);});
       const explanation=document.createElement('p');explanation.textContent='Linhas quase retas também são alinhadas ao soltar a caneta. Segure o atalho de linha reta para desenhar uma linha manualmente.';recognition.append(explanation);

@@ -369,7 +369,13 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
       window.boardSettings=await import('/assets/note-whiteboard-settings.js');
       boardSettings.openWhiteboardSettings({host:document.body,getSettings:()=>drawingTest.settings(),setSettings:value=>drawingTest.preferences(value)});
     });
-    await page.selectOption('[aria-label="Tipo de fundo"]','grid');
+    await page.getByRole('button',{name:'Pontinhos',exact:true}).click();
+    await page.locator('[aria-label="Cor dos pontinhos"]').fill('#223344');
+    await page.getByRole('button',{name:'Branco',exact:true}).click();
+    assert.equal(await page.locator('.note-background-colors input').count(),0,'white background needs no color controls');
+    await page.getByRole('button',{name:'Quadriculado',exact:true}).click();
+    await page.locator('[aria-label="Cor das linhas"]').fill('#556677');
+    await page.click('[role="tab"]:has-text("Comportamento")');
     await page.locator('label').filter({hasText:'Ignorar o scroll'}).locator('input').check();
     await page.click('[role="tab"]:has-text("Ferramentas")');
     await page.locator('.note-board-tool-list label').filter({hasText:'Caneta 2'}).locator('input').uncheck();
@@ -378,6 +384,7 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     assert.ok((await page.locator('.note-board-settings-message').textContent()).includes('já está em uso'),'fixed copy cannot be reassigned');
     await page.keyboard.press('q');
     await page.click('button:has-text("Salvar preferências")');
+    assert.equal((await run(()=>drawingTest.settings())).gridColor,'#556677');assert.equal((await run(()=>drawingTest.settings())).dotsColor,'#223344');
     assert.equal((await run(()=>drawingTest.settings())).background,'grid');assert.equal((await run(()=>drawingTest.settings())).wheel,'none');
     assert.equal((await run(()=>drawingTest.settings())).shortcuts.pen,'q');
     assert.equal(await page.locator('[data-board-tool="secondary"]').isVisible(),false);
