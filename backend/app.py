@@ -72,12 +72,12 @@ def dummy_password_hash():
     return generate_password_hash(secrets.token_urlsafe(24))
 
 
-def create_app(settings=None, database=None):
+def create_app(settings=None, database=None, *, application=None):
     env_file = os.environ.get('HUB_ENV_FILE', '.env')
     load_dotenv(ROOT / env_file)
     on_vercel = os.environ.get('VERCEL') == '1'
     cloud_files = os.environ.get('STORAGE_BACKEND', 'supabase' if on_vercel else 'local') == 'supabase'
-    app = Flask(__name__, static_folder=None)
+    app = application if application is not None else Flask(__name__, static_folder=None)
     app.config.update(
         SECRET_KEY=os.environ.get('SECRET_KEY'),
         DATABASE_URL=os.environ.get('DATABASE_URL'),
