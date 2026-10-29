@@ -1,31 +1,68 @@
 # LABIOMEC Hub
 
-Hub do Laboratório de Biomecânica do PEB/COPPE/UFRJ com HTML/JavaScript, API Python/Flask, PostgreSQL e arquivos em disco. Não depende do Firebase nem de assinatura de armazenamento. A capacidade depende do disco disponível no servidor.
+Espaço de trabalho do Laboratório de Biomecânica do PEB/COPPE/UFRJ para conectar a equipe e organizar publicações, metas, demandas, arquivos, conversas e notas privadas.
+
+**Acessar o Hub:** [labmechub.vercel.app](https://labmechub.vercel.app)
+
+A interface usa HTML, CSS e JavaScript; a API usa Flask e PostgreSQL. Os arquivos podem ficar em disco persistente na instalação local ou em um bucket privado do Supabase na nuvem. As chamadas usam LiveKit. O projeto não depende do Firebase.
+
+## Recursos
+
+| Área | O que está disponível |
+| --- | --- |
+| Mural | Publicações, comentários, enquetes e anexos de imagem, GIF, vídeo e PDF |
+| Trabalho | Metas, demandas pessoais e de unidades, filtros, histórico e restauração de demandas excluídas |
+| Meu Espaço | Notas privadas e editor de documentos com formatação, tabelas, fórmulas e impressão |
+| Quadro de desenho | Canetas, marca-texto, laser, borracha, formas, carimbo da logo, seleção, laço e recorte |
+| Arquivos | Biblioteca com projeto, unidades, cotas e downloads autorizados pelo backend |
+| Comunicação | Mensagens, notificações, presença e chamadas de equipe com LiveKit |
+| Equipe | Perfis, vínculos, unidades, conquistas e administração de contas |
+| Navegação | Busca unificada, temas e layouts para desktop, celular e tablet |
+
+O quadro permite importar imagens e páginas de PDF, exportar PNG/PDF, personalizar o fundo e usar tela cheia. Em telas de toque, um dedo desenha; dois dedos movem o quadro; a pinça ajusta o zoom. Veja [Quadro de desenho](#quadro-de-desenho).
+
+## Como executar
+
+- **No computador ou servidor próprio:** [com Docker](#iniciar-com-docker) ou [sem Docker](#iniciar-sem-docker).
+- **Na nuvem:** [Vercel, Supabase e LiveKit Cloud](#publicar-na-vercel).
+- **Para manter o projeto:** [testes](#testes), [segurança](#segurança) e [backup](#backup).
 
 ## Organização do código
 
 | Arquivo | Responsabilidade |
 | --- | --- |
 | `index.html` | Interface, mural, metas, demandas e arquivos |
+| `app.py` | Entrada Flask/WSGI usada na publicação |
 | `assets/lab-api.js` | Sessão, chamadas HTTP e atualização dos painéis |
 | `assets/global-search.js` | Campo de busca, categorias e resultados no header |
-| `lab-config.js` | Endereço público da API e sala de reunião |
+| `assets/note-document.js` | Editor de documentos e ferramentas de texto |
+| `assets/note-drawing-toolbar.js` | Barra de ferramentas do quadro e menus adaptados à tela |
+| `assets/note-whiteboard-model.js` | Preferências, reconhecimento e desenho das formas |
+| `assets/note-whiteboard-settings.js` | Fundo, comportamento, ferramentas e atalhos |
+| `assets/note-whiteboard-files.js` | Importação de imagens/PDF e exportação do quadro |
+| `assets/note-fullscreen.js` | Tela cheia do editor e alternativa de janela ampliada |
+| `lab-config.js` | Configuração pública da API e do apoio voluntário |
 | `backend/app.py` | Rotas HTTP e comandos administrativos |
 | `backend/database.py` | Consultas SQL parametrizadas e transações |
 | `backend/permissions.py` | Regras de leitura e alteração |
 | `backend/search.py` | Busca unificada e filtros sobre conteúdo autorizado |
 | `backend/schema.sql` | Estrutura do banco |
 | `backend/tests/` | Testes de API, permissões e banco |
+| `pyproject.toml` | Python 3.13, dependências fixadas e entrada `app:app` para a Vercel |
+| `compose.yaml` | Serviços locais de PostgreSQL, Hub e LiveKit |
+| `docs/` | Guias de nuvem, chamadas, quadro e revisões de segurança |
 
 Funções Python seguem nomes em inglês, conforme as convenções das bibliotecas. Comentários e mensagens explicam as decisões em português. Não foram importados dados clínicos do projeto de referência.
 
 ## Iniciar com Docker
 
-Instale Docker com Docker Compose. Na raiz do projeto, copie `.env.example` para `.env`. Escolha uma senha longa para `POSTGRES_PASSWORD`, usando letras, números, hífen e sublinhado para evitar caracteres especiais na URL. Gere um segredo com o comando abaixo e coloque o resultado em `SECRET_KEY`:
+Instale Docker com Docker Compose. Na raiz do projeto, copie [`.env.example`](.env.example) para `.env`. Escolha uma senha longa para `POSTGRES_PASSWORD`, usando letras, números, hífen e sublinhado para evitar caracteres especiais na URL. Gere um segredo com o comando abaixo e coloque o resultado em `SECRET_KEY`:
 
 ```sh
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
+
+Preencha também `LIVEKIT_API_KEY` e `LIVEKIT_API_SECRET`: o Compose exige esses valores ao validar a configuração, mesmo quando você não inicia o serviço de voz. Use valores próprios do ambiente local. Para execução sem HTTPS no computador, mantenha `COOKIE_SECURE=false`.
 
 Prepare o banco e crie a primeira conta:
 
@@ -45,19 +82,67 @@ O Compose publica apenas a porta local do hub. PostgreSQL permanece na rede inte
 
 ## Iniciar sem Docker
 
-Instale Python 3.13 ou superior e PostgreSQL 17 ou superior. Crie um usuário e banco dedicados. Configure `DATABASE_URL`, `SECRET_KEY` e `STORAGE_DIR` no `.env`. Não use uma conta de superusuário do banco em produção.
+Use **Python 3.13**, conforme `.python-version` e `pyproject.toml`, e PostgreSQL 17 para acompanhar o ambiente do projeto. Crie um usuário e banco dedicados. Copie `.env.example` para `.env` e configure `DATABASE_URL`, `SECRET_KEY` e `STORAGE_DIR`. Não use uma conta de superusuário do banco em produção.
 
 No Windows/PowerShell:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r backend/requirements.txt
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m flask --app backend.app init-db
 .\.venv\Scripts\python.exe -m flask --app backend.app create-user admin@example.org --name "Administrador" --admin
 .\.venv\Scripts\python.exe -m backend.app
 ```
 
 No Linux, use `.venv/bin/python`. O `.env` é carregado automaticamente. O servidor usa Waitress, sem modo debug. Você pode definir `HOST` e `PORT`; por padrão, o acesso é local na porta 5000.
+
+O `requirements.txt` da raiz utiliza `backend/requirements.lock`. Mantenha esse lock e as versões de `pyproject.toml` alinhados ao atualizar as dependências.
+
+## Publicar na Vercel
+
+O ambiente publicado usa **Vercel para o Hub**, **Supabase para PostgreSQL e arquivos privados** e **LiveKit Cloud para as chamadas**. A Vercel não inicia os serviços do Docker Compose nem mantém os uploads em disco persistente.
+
+1. Conecte o repositório no GitHub ao projeto da Vercel. A pasta raiz é a raiz do repositório; o preset é **Flask**. A entrada `app:app` já está declarada em `pyproject.toml`.
+2. Configure o PostgreSQL e crie o bucket privado `hub-files` no Supabase. Não habilite acesso público ao bucket.
+3. Cadastre as variáveis no painel de ambiente da Vercel, no ambiente que receberá a publicação.
+4. Prepare o banco pelo comando `flask --app backend.app init-db`, usando a conexão do ambiente correto, e crie a primeira conta administrativa pelo comando `create-user ... --admin`.
+5. Configure o projeto LiveKit Cloud e suas credenciais para habilitar chamadas.
+6. Confirme a branch de produção e faça o deploy. Nesta instalação, a branch é `atualizacao-hub-20261028`; novas instalações podem escolher outra.
+7. Confira `/api/health`, login, permissões, upload/download e chamadas no domínio publicado.
+
+| Variável | Uso na nuvem |
+| --- | --- |
+| `DATABASE_URL` | URI PostgreSQL privada do Transaction pooler, com `sslmode=require` |
+| `SECRET_KEY` | Segredo exclusivo da aplicação em produção |
+| `PUBLIC_ORIGIN` | Origem HTTPS exata; nesta instalação, `https://labmechub.vercel.app` |
+| `COOKIE_SECURE` | `true` |
+| `ALLOW_LOCAL_FRAME_PREVIEW` | `false` |
+| `ALLOW_REGISTRATION` | `true` para permitir cadastro ou `false` para contas criadas pela administração |
+| `STORAGE_BACKEND` | `supabase` |
+| `SUPABASE_URL` | URL do projeto Supabase |
+| `SUPABASE_SECRET_KEY` | Chave secreta do backend, nunca enviada ao navegador |
+| `SUPABASE_STORAGE_BUCKET` | `hub-files` |
+| `MAX_UPLOAD_MB` / `POST_ATTACHMENT_MAX_MB` | `4` na configuração inicial para a Vercel |
+| `STORAGE_LIMIT_GB` | `1` na configuração inicial de testes |
+| `LIVEKIT_URL` | URL pública do projeto, começando com `wss://` |
+| `LIVEKIT_INTERNAL_URL` | Endpoint HTTPS correspondente para a API do LiveKit |
+| `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Credenciais do projeto LiveKit |
+
+As cotas acima são configurações do Hub, não uma garantia sobre os planos dos provedores. Confira os limites disponíveis nos respectivos painéis. O limite de upload inclui o formulário HTTP; arquivos próximos ao teto podem ser recusados.
+
+Para comandos locais que acessam o ambiente de nuvem, use um arquivo privado `.env.cloud` e selecione-o explicitamente no PowerShell:
+
+```powershell
+$env:HUB_ENV_FILE = '.env.cloud'
+.\.venv\Scripts\python.exe -m flask --app backend.app init-db
+Remove-Item Env:HUB_ENV_FILE
+```
+
+Selecione a conexão com cuidado antes de executar comandos administrativos. O envio do código não copia automaticamente usuários, publicações ou arquivos locais para a nuvem. Depois de alterar variáveis na Vercel, publique um novo deployment para aplicá-las. Se mudar o domínio, atualize também `PUBLIC_ORIGIN`.
+
+`.env` e `.env.cloud` são privados e ignorados pelo Git. Importe os valores pelo painel da hospedagem; nunca inclua credenciais em `lab-config.js`, commits, prints ou exemplos públicos.
+
+O guia [Configuração de nuvem](docs/nuvem-gratuita.md) detalha armazenamento, pooler e limitações. A recuperação de senha por e-mail exige uma entrega compatível com execução serverless; o envio local por thread não constitui uma fila durável. Não considere o SMTP validado em produção apenas por preencher as variáveis.
 
 ## Contas e unidades
 
@@ -75,7 +160,7 @@ docker compose run --rm hub flask --app backend.app reset-password pesquisador@e
 
 ## Banco e comunicação
 
-As chamadas de equipe agora usam salas de voz próprias no navegador, com LiveKit local, controles de microfone/áudio e chamada minimizada. Veja [configuração, testes locais e requisitos para publicar](docs/chamadas-voz.md). Para iniciar o serviço de voz junto do Hub: `docker compose up -d --build hub voice`.
+As chamadas de equipe usam salas de voz no navegador, com LiveKit local ou LiveKit Cloud, controles de microfone/áudio e chamada minimizada. Veja [configuração, testes locais e requisitos para publicar](docs/chamadas-voz.md). Para iniciar o serviço de voz local junto do Hub: `docker compose up -d --build hub voice`.
 
 ### Minijogos e ranking semanal
 
@@ -149,11 +234,22 @@ Arquivos ficam fora das rotas estáticas, com nomes internos aleatórios. Downlo
 | --- | --- | --- |
 | `STORAGE_LIMIT_GB` | 100 | Limite lógico total dos arquivos cadastrados |
 | `MAX_UPLOAD_MB` | 2048 | Limite por requisição, incluindo o formulário |
-| `STORAGE_DIR` | `./var/files` | Diretório na execução nativa |
+| `STORAGE_DIR` | `./var/files` | Diretório na execução nativa com armazenamento local |
+| `STORAGE_BACKEND` | `local` fora da Vercel | Seleciona disco local ou `supabase` |
 
 Aumentar a configuração não cria espaço físico. Reserve disco para temporários, banco e backups. Disco cheio pode interromper um envio antes da cota. Não há upload retomável nesta versão.
 
 Com Docker, os volumes são `postgres_data` e `lab_files`, prefixados pelo nome do projeto. Não execute `docker compose down -v` se quiser preservar os dados. Sem Docker, os arquivos ficam em `STORAGE_DIR`.
+
+Na nuvem com `STORAGE_BACKEND=supabase`, os objetos ficam no bucket privado; o backend mantém a autorização de uploads e downloads. As configurações iniciais da Vercel usam limites menores que os padrões locais da tabela. A capacidade depende também das cotas do provedor. Disco temporário não substitui armazenamento persistente.
+
+## Segurança
+
+As permissões são verificadas no servidor. Sessões usam cookies `HttpOnly`; alterações exigem CSRF e origem válida. O projeto inclui políticas de conteúdo, limitação de tentativas, validação de uploads e controle de acesso por conta e unidade. Notas privadas e conversas não ficam disponíveis para outros integrantes ou administradores apenas pelo privilégio administrativo.
+
+Cadastros públicos, quando habilitados, não concedem administração nem associação automática a unidades. A opção de suporte é gerenciada pela administração. A ocultação de uma conta no diretório e na presença não torna anônimas suas publicações, mensagens ou participação em chamadas.
+
+Consulte a [documentação de segurança](SECURITY.md), o [modelo de ameaças](docs/modelo-de-ameacas.md) e a [revisão STRIDE/DREAD de 28/10/2026](docs/revisao-stride-dread-2026-10-28.md). Os relatórios datados registram o estado e as evidências daquela revisão; não são uma certificação nem garantia de ausência de falhas.
 
 ## Backup
 
@@ -168,13 +264,15 @@ docker compose cp hub:/tmp/labiomec-files.tar.gz ./labiomec-files.tar.gz
 
 Esses exemplos exigem espaço temporário e não substituem uma política de backup. Proteja também o `.env` e as credenciais administrativas.
 
+Os comandos acima cobrem a instalação Docker com arquivos locais. No ambiente Supabase, inclua tanto o banco quanto os objetos do bucket no procedimento de backup e teste a restauração dos dois. Publicar o repositório no GitHub não faz backup dos dados do Hub.
+
 ## Testes
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s backend/tests -v
 ```
 
-Testes HTTP usam um repositório em memória exclusivo dos testes. Cobrem login, CSRF, permissões, privacidade, mensagens, arquivos e cotas. O aplicativo real aceita somente PostgreSQL.
+Execute os comandos a partir da raiz do repositório. Testes HTTP usam um repositório em memória exclusivo dos testes. Cobrem login, CSRF, permissões, privacidade, mensagens, arquivos e cotas. O aplicativo real aceita somente PostgreSQL.
 
 Para testar SQL, defina `TEST_DATABASE_URL` com um banco vazio exclusivo de testes. O teste cria tabelas, usa identificadores próprios e remove os registros criados. Nunca aponte para o banco do laboratório.
 
@@ -186,13 +284,29 @@ docker compose run --rm --no-deps hub python -m backend.tests.run_postgres_tests
 
 Esse comando exige permissão para criar bancos. Ele cria um banco com nome aleatório, executa os testes e remove apenas esse banco ao terminar. Nenhuma tabela do banco do laboratório é alterada por esse teste.
 
-### Validação das correções de segurança
+Os testes JavaScript usam Node.js; as validações recentes foram feitas com Node.js 24. Exemplos sem navegador:
 
-Na validação de 24/10/2026, a suíte Python completa passou: 169 testes executados, com 8 testes que exigem PostgreSQL real pulados porque não havia banco disponível. A execução direcionada às regressões de segurança, autenticação, administração, recuperação de senha, busca e ranking passou com 135 testes. `docker compose config --quiet` e a verificação de sintaxe dos módulos JavaScript ES também passaram.
+```sh
+node backend/tests/test_whiteboard_model.cjs
+node backend/tests/test_activity_notifications.cjs
+node backend/tests/test_profile_units.cjs
+node backend/tests/test_notification_state.cjs
+```
 
-Os testes `.cjs` não foram confirmados nesta validação: a tentativa de executar `backend/tests/test_activity_notifications.cjs` falhou porque o teste procurou `assets/activity-notifications.js` fora da pasta do projeto. A configuração precisa ser corrigida ou a execução feita na estrutura de diretórios esperada antes de considerar essa parte validada.
+O teste do quadro usa `playwright-core` e um navegador Chromium instalado. Exemplo com Edge no Windows, mantendo a dependência de teste fora do repositório:
 
-Foram executados 39 testes, incluindo busca e seus filtros de privacidade, upload, publicação, download e exclusão/restauração de demandas com PostgreSQL real, além das verificações de sintaxe. A interface não foi validada visualmente em navegador automatizado.
+```powershell
+npm install --prefix "$env:TEMP\labmec-browser-tests" --no-audit --no-fund playwright-core
+$env:PLAYWRIGHT_MODULE = "$env:TEMP\labmec-browser-tests\node_modules\playwright-core"
+$env:EDGE_EXECUTABLE = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
+node backend/tests/test_note_drawing_area.cjs
+```
+
+Se o navegador estiver em outro local, ajuste `EDGE_EXECUTABLE`. O teste usa desenhos e arquivos fictícios, sem conta de produção. Verifica desenho, seleção, recorte, histórico, atalhos, importação/exportação, preferências, CSP, tela cheia e gestos de toque.
+
+A validação mais recente do quadro passou em seis tamanhos emulados: **320×568, 390×844, 768×1024, 1024×768, 1366×1024 e 844×390**. Inclui pinça, movimento com dois dedos e caneta digital com toque simultâneo da mão. A emulação não substitui testes em aparelhos reais, especialmente em navegadores e sistemas diferentes.
+
+Evidências anteriores estão nos relatórios de [segurança](docs/resultado-seguranca-2026-10-28.md) e [adaptação para nuvem](docs/validacao-nuvem-2026-10-28.md). Seus números e pendências correspondem às respectivas datas; não representam uma nova execução completa a cada atualização do README.
 
 ## Visualização expandida do mural
 
@@ -255,6 +369,45 @@ A área de escrita tem largura A4 de 21 cm, altura inicial de 29,7 cm e margens 
 As notas continuam privadas e com salvamento automático. Documentos formatados aparecem como prévia no bloco compacto e são editados em Expandir, preservando tabelas e fórmulas. Clique em uma imagem e arraste os cantos para redimensioná-la mantendo a proporção; as setas do teclado nos cantos fazem ajustes de 10 pixels. Arraste a imagem entre os parágrafos para movê-la junto com a legenda, usando a linha de inserção como guia. Listas de tarefas podem ser marcadas pelo quadrado ou Ctrl+Enter dentro do item. O modo de desenho permanece disponível.
 
 A aba Documento permite importar TXT/HTML, baixar HTML/TXT e imprimir ou salvar em PDF pelo navegador. Não há importação ou exportação nativa de DOCX/ODT nem compilação de LaTeX. Imagens locais PNG/JPEG/GIF/WebP têm limite de 512 KB por imagem; documentos HTML importados são higienizados e não carregam scripts ou imagens externas.
+
+## Quadro de desenho
+
+No editor de notas, escolha o modo de desenho. O quadro é salvo nas notas privadas da própria conta, junto com as preferências de ferramentas e aparência.
+
+| Ferramenta | Controles |
+| --- | --- |
+| Canetas 1 e 2 | Cor, espessura e estilo contínuo, tracejado, pontilhado ou com seta |
+| Marca-texto | Paleta com preto, branco, vermelho, azul, verde, laranja e roxo, cor personalizada, espessura e opacidade |
+| Laser | Espessura independente, inicialmente 4 px; o efeito desaparece e não entra no desenho salvo |
+| Borracha | Pixel para apagar partes do desenho ou Traço para remover o traço inteiro, com espessura ajustável |
+| Formas | Linha, retângulo, círculo/elipse, triângulo, cubo, cilindro, pirâmide e esfera; as partes ocultas dos sólidos são tracejadas |
+| Seleção | Mover, redimensionar, selecionar com laço, copiar/colar, apagar e recortar uma área |
+| Conteúdo | Carimbo da logo do Hub, caixas de texto, imagens e páginas de PDF |
+| Saída | Download em PNG ou PDF, incluindo o fundo e sem o efeito do laser |
+
+A engrenagem abre quatro abas: **Fundo**, **Comportamento**, **Ferramentas** e **Atalhos**. O fundo pode ser Branco, Quadriculado, Pontinhos ou Cor, com cores independentes para a base e o padrão. O reconhecimento de formas pode ser ligado ou desligado e configurado para círculo, retângulo, triângulo e linha reta. A pessoa também pode ocultar ferramentas, editar os atalhos permitidos e restaurar os padrões.
+
+### Navegação e tela cheia
+
+- A rodinha aplica zoom por padrão: para cima aproxima; para baixo afasta. Com **Mover** selecionado, esse também é o comportamento da rodinha, salvo quando o scroll foi configurado para ser ignorado.
+- **Shift + rodinha** move o quadro para os lados. **Espaço + arrastar**, ou arrastar com Mover selecionado, desloca o quadro.
+- As barras de rolagem ficam ocultas. O cursor de desenho é circular e a superfície se adapta ao espaço visível, dentro do limite de 4096 pixels por dimensão.
+- A alça de pontinhos reposiciona a barra. Dois cliques ou Home, com a alça focada, restauram a posição inicial.
+- Recolher a barra libera espaço sem sair do modo de desenho. O botão de reabrir fica disponível no quadro.
+- O botão ao lado de **Voltar**, no topo do editor, alterna a tela cheia. **Esc** permite sair; se o navegador não oferecer a API de tela cheia, o editor usa a janela ampliada.
+
+### Celular e tablet
+
+Os controles de desenho têm alvos de toque de pelo menos 44 px nos layouts de celular e tablet. Ferramentas principais ficam na barra; formas, laser e outras opções ficam no menu **+**, que permanece acessível junto da engrenagem. Os painéis se ajustam ao espaço disponível em telas em pé ou deitadas.
+
+- **Um dedo:** desenha com a ferramenta selecionada.
+- **Dois dedos:** movem o quadro sem criar traços.
+- **Pinça:** aumenta ou diminui o zoom.
+- **Caneta digital:** enquanto o traço está ativo, toques simultâneos no quadro são ignorados.
+
+Imagens e PDFs importados no quadro são processados no navegador, com limite de entrada de 10 MB. Imagens são normalizadas; PDFs com várias páginas permitem escolher a página. O tamanho final da nota e os limites de requisição da hospedagem também se aplicam ao salvamento. Esse fluxo é diferente dos anexos do mural e da importação de imagens no editor de texto.
+
+Detalhes de ferramentas, padrões e testes: [Quadro das notas](docs/quadro-de-notas.md).
 
 ## Referências institucionais
 
