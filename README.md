@@ -190,7 +190,7 @@ Os painéis consultam `/api/sync` a cada 5 segundos com a página visível. Não
 
 ## Busca no header
 
-A seta de retorno do cabeçalho funciona como alternativa ao **Voltar** da tela aberta, quando o cabeçalho está acessível. Usa a mesma ação de retorno de perfis, arquivos, notificações e painéis, preservando o contexto e os rascunhos. Na tela principal, leva ao topo do Hub.
+O botão **Home** do cabeçalho funciona como alternativa ao **Voltar** da tela aberta, quando o cabeçalho está acessível. Usa a mesma ação de retorno de perfis, arquivos, notificações e painéis, preservando o contexto e os rascunhos. Na tela principal, leva ao topo do Hub.
 
 A barra **Pesquisar no hub** reúne resultados em Tudo, Mural, Demandas, Metas, Metas que criei, Pessoas, Arquivos, Notas e Mensagens. O atalho `Ctrl+K` (ou `Cmd+K`) abre o campo. É possível filtrar por criados por mim, atribuídos a mim, concluídos e excluídos. **Metas que criei** considera a autoria da meta, não quem marcou sua conclusão.
 

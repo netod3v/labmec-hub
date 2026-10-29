@@ -6,11 +6,14 @@ const source=fs.readFileSync(path.resolve(__dirname,'../../assets/header-back.js
 function control(){return {disabled:false,hiddenParent:false,clicks:0,closest(){return this.hiddenParent;},getClientRects(){return [1];},click(){this.clicks++;}};}
 function surface(layer,buttons,dialog=false){return {...control(),layer,matches(){return dialog;},querySelectorAll(){return buttons;}};}
 let current=[];
-const context=vm.createContext({document:{querySelectorAll(){return current;}},getComputedStyle:element=>({zIndex:String(element.layer)})});
+const context=vm.createContext({document:{querySelectorAll(selector){return current.filter(element=>!element.selector||selector.split(',').includes(element.selector));}},getComputedStyle:element=>({zIndex:String(element.layer)})});
 vm.runInContext(source.replace(/export /g,''),context);
 const back=vm.runInContext('returnFromCurrentScreen',context);
 const initialize=vm.runInContext('initializeHeaderBack',context);
 const profile=control(),files=control(),notification=control();
+// Profiles are inline sections, not modal-overlay elements.
+const profilePage=surface('auto',[profile]);profilePage.selector='#view-profile-modal';
+current=[profilePage];assert.equal(back(),true);assert.equal(profile.clicks,1);profile.clicks=0;
 for(const button of [profile,files,notification]){
   current=[surface('auto',[button])];assert.equal(back(),true);assert.equal(button.clicks,1);
 }

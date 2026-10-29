@@ -1,7 +1,7 @@
 // Reuse each screen's own return action, including scroll, focus and drafts.
 const surfaces = [
   '.modal-overlay:not(.hidden):not(.modal-closing)', 'dialog[open]',
-  '#global-search-panel:not([hidden])', '#lab-files',
+  '#global-search-panel:not([hidden])', '#lab-files', '#view-profile-modal',
   '#mention-notification-modal', '#header-more-menu.open', '#mobile-compose-page',
 ].join(',');
 const controls = [
