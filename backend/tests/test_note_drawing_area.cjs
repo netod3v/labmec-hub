@@ -236,12 +236,34 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     await page.setViewportSize({width:1360,height:820});
     await page.click('#note-draw-pen');
     await page.screenshot({path:path.join(process.env.TEMP||'/tmp','labmec-drawing-toolbar-desktop.png')});
+    const objectCount=await run(()=>drawingTest.state().objects),originalBar=await page.locator('.note-reference-toolbar').boundingBox();
+    let gripBox=await page.locator('.note-toolbar-grip').boundingBox();
+    await page.mouse.move(gripBox.x+gripBox.width/2,gripBox.y+gripBox.height/2);await page.mouse.down();await page.mouse.move(gripBox.x+30,0,{steps:8});await page.mouse.up();
+    let movedBar=await page.locator('.note-reference-toolbar').boundingBox(),boardBounds=await page.locator('.note-draw-panel').boundingBox();
+    assert.ok(movedBar.y<originalBar.y-100&&movedBar.y>=boardBounds.y,'grip moves toolbar and clamps it to the board');
+    assert.equal(await run(()=>drawingTest.state().objects),objectCount,'moving toolbar does not draw on the canvas');
+    await page.click('#note-draw-pen');
+    let paletteBounds=await page.locator('.note-pen-popover').boundingBox();movedBar=await page.locator('.note-reference-toolbar').boundingBox();
+    assert.ok(paletteBounds.y>=movedBar.y+movedBar.height,'palette opens below a toolbar near the top');
+    await page.click('[aria-label="Mais ferramentas"]');
+    let menuBounds=await page.locator('.note-drawing-more').boundingBox();
+    assert.ok(menuBounds.y>=movedBar.y+movedBar.height,'extra tools remain reachable near the top edge');
+    await page.keyboard.press('Escape');await page.locator('.note-toolbar-grip').focus();await page.keyboard.press('ArrowDown');
+    assert.ok((await page.locator('.note-reference-toolbar').boundingBox()).y>movedBar.y,'keyboard can reposition the toolbar');
     for(const width of [768,390]){
       await page.setViewportSize({width,height:820});
+      await page.waitForTimeout(50);
       const bounds=await page.locator('.note-reference-toolbar').boundingBox();
       assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width,'toolbar fits viewport '+width);
-      assert.equal(await page.locator('.note-pen-popover').isVisible(),true);
     }
+    gripBox=await page.locator('.note-toolbar-grip').boundingBox();movedBar=await page.locator('.note-reference-toolbar').boundingBox();
+    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:gripBox.x+gripBox.width/2,y:gripBox.y+gripBox.height/2}]});
+    await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:gripBox.x+gripBox.width/2,y:gripBox.y+150}]});
+    await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    assert.ok((await page.locator('.note-reference-toolbar').boundingBox()).y>movedBar.y+50,'touch can reposition toolbar');
+    await page.locator('.note-toolbar-grip').focus();await page.keyboard.press('Home');
+    assert.ok((await page.locator('.note-reference-toolbar').boundingBox()).y>500,'Home restores the default bottom position');
+    await page.click('#note-draw-pen');
     await page.screenshot({path:path.join(process.env.TEMP||'/tmp','labmec-drawing-toolbar-mobile.png')});
     await page.setViewportSize({width:1600,height:1100});
     await page.click('[aria-label="Recolher ferramentas"]');

@@ -18,6 +18,9 @@ com as notas. Desenhos anteriores sem esses campos usam os padrões.
   PDFs de entrada com várias páginas oferecem escolha da página a inserir.
 - Recolher a barra mantém o quadro utilizável; o botão Ferramentas de desenho
   permite abri-la novamente.
+- Arraste a alça de pontinhos para reposicionar a barra dentro do quadro.
+  As setas do teclado ajustam a posição quando a alça está focada. Dois cliques
+  ou Home restauram a posição inicial. Os menus se adaptam às bordas do quadro.
 
 ## Configurações e padrões
 

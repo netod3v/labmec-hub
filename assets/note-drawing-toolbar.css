@@ -1,4 +1,6 @@
-.note-reference-toolbar{left:50%;bottom:16px;max-width:calc(100% - 28px);padding:6px 10px;border:1px solid var(--border);border-radius:15px;background:var(--paper);color:var(--ink);box-shadow:0 8px 30px #132f4c12;overflow:visible;}
+.note-reference-toolbar{box-sizing:border-box;left:50%;bottom:16px;width:max-content;max-width:calc(100% - 28px);padding:6px 10px;border:1px solid var(--border);border-radius:15px;background:var(--paper);color:var(--ink);box-shadow:0 8px 30px #132f4c12;overflow:visible;}
+.note-toolbar-grip{flex:none;display:grid;place-items:center;width:18px;height:32px;padding:0;margin-right:4px;border:0;border-radius:6px;background:transparent;color:var(--text-3,var(--ink));cursor:grab;touch-action:none;user-select:none;}
+.note-toolbar-grip svg{width:12px;height:24px;fill:currentColor;}.note-toolbar-grip:hover{background:var(--parchment);}.note-toolbar-grip.dragging{cursor:grabbing;}.note-toolbar-grip:focus-visible{outline:2px solid var(--forest);outline-offset:1px;}
 .note-toolbar-strip{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%;overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
 .note-tool-group{display:flex;align-items:center;gap:2px;flex:none;padding-right:6px;border-right:1px solid var(--border);}
 .note-tool-group:last-child{border:0;padding-right:0;}

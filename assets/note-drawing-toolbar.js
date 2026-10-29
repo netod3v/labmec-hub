@@ -94,7 +94,48 @@ export function initializeDrawingToolbar(options) {
   toolbar.addEventListener('click',event=>{if(!moreButton.contains(event.target)&&!moreMenu.contains(event.target))closeMore();});
   const reopen=document.createElement('button');reopen.type='button';reopen.className='note-toolbar-reopen';reopen.textContent='Ferramentas de desenho';reopen.hidden=true;reopen.onclick=()=>{toolbar.hidden=false;areaTools.hidden=false;reopen.hidden=true;refresh();};panel.append(reopen);
   button(finish,'Recolher ferramentas','M6 6l12 12M18 6 6 18',()=>{popup.hidden=true;closeMore();toolbar.hidden=true;areaTools.hidden=true;reopen.hidden=false;close?.();});
-  toolbar.replaceChildren(popup,moreMenu,strip,native);
+  const grip=document.createElement('button');grip.type='button';grip.className='note-toolbar-grip';grip.setAttribute('aria-label','Mover barra de ferramentas');grip.title='Arraste para mover · setas para ajustar · dois cliques para restaurar';
+  grip.innerHTML='<svg viewBox="0 0 12 24" aria-hidden="true"><circle cx="4" cy="7" r="1"/><circle cx="8" cy="7" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="8" cy="12" r="1"/><circle cx="4" cy="17" r="1"/><circle cx="8" cy="17" r="1"/></svg>';
+  toolbar.replaceChildren(popup,moreMenu,grip,strip,native);
+  let position=null,drag=null;
+  function fitPopovers(){
+    const box=toolbar.getBoundingClientRect(),bounds=panel.getBoundingClientRect();
+    for(const element of [popup,moreMenu]){
+      if(element.hidden)continue;
+      element.style.transform='';element.style.maxWidth=Math.max(120,panel.clientWidth-16)+'px';
+      const above=box.top-bounds.top-12,below=bounds.bottom-box.bottom-12;
+      const down=above<element.scrollHeight&&below>above;
+      element.style.top=down?'calc(100% + 9px)':'auto';element.style.bottom=down?'auto':'calc(100% + 9px)';
+      element.style.maxHeight=Math.max(50,(down?below:above)-4)+'px';element.style.overflowY='auto';
+      const rect=element.getBoundingClientRect(),offset=rect.left<bounds.left+8?bounds.left+8-rect.left:rect.right>bounds.right-8?bounds.right-8-rect.right:0;
+      if(offset)element.style.transform='translateX('+offset+'px)';
+    }
+  }
+  function place(x,y){
+    if(!panel.clientWidth||!panel.clientHeight||toolbar.hidden)return;
+    const width=toolbar.offsetWidth,height=toolbar.offsetHeight;
+    position={x:Math.max(8,Math.min(x,Math.max(8,panel.clientWidth-width-8))),y:Math.max(8,Math.min(y,Math.max(8,panel.clientHeight-height-8)))};
+    toolbar.style.left=position.x+'px';toolbar.style.top=position.y+'px';toolbar.style.bottom='auto';toolbar.style.transform='none';fitPopovers();
+  }
+  function resetPosition(){position=null;for(const key of ['left','top','bottom','transform'])toolbar.style[key]='';fitPopovers();}
+  grip.addEventListener('pointerdown',event=>{
+    if(event.button!==0||event.isPrimary===false)return;event.preventDefault();event.stopPropagation();
+    const box=toolbar.getBoundingClientRect(),bounds=panel.getBoundingClientRect();
+    drag={pointerId:event.pointerId,x:event.clientX,y:event.clientY,left:box.left-bounds.left-panel.clientLeft,top:box.top-bounds.top-panel.clientTop};
+    popup.hidden=true;closeMore();grip.setPointerCapture(event.pointerId);grip.classList.add('dragging');
+  });
+  grip.addEventListener('pointermove',event=>{if(drag&&drag.pointerId===event.pointerId){event.preventDefault();place(drag.left+event.clientX-drag.x,drag.top+event.clientY-drag.y);}});
+  const endDrag=()=>{drag=null;grip.classList.remove('dragging');};
+  grip.addEventListener('pointerup',endDrag);grip.addEventListener('pointercancel',endDrag);grip.addEventListener('lostpointercapture',endDrag);
+  grip.addEventListener('dblclick',resetPosition);
+  grip.addEventListener('keydown',event=>{
+    if(event.key==='Home'){event.preventDefault();event.stopPropagation();resetPosition();return;}
+    const offsets={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]},offset=offsets[event.key];if(!offset)return;
+    event.preventDefault();event.stopPropagation();const box=toolbar.getBoundingClientRect(),bounds=panel.getBoundingClientRect(),step=event.shiftKey?30:10;
+    place(box.left-bounds.left-panel.clientLeft+offset[0]*step,box.top-bounds.top-panel.clientTop+offset[1]*step);
+  });
+  const positionObserver=new ResizeObserver(()=>{if(position)place(position.x,position.y);else fitPopovers();});positionObserver.observe(panel);positionObserver.observe(toolbar);
+  toolbar.addEventListener('click',()=>queueMicrotask(fitPopovers));
   function refresh(){
     const state=getState();
     const hidden=new Set(state.preferences?.hiddenTools||[]);
