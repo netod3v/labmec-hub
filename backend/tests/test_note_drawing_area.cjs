@@ -232,6 +232,14 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     assert.equal(await page.locator('canvas').evaluate(el=>getComputedStyle(el).cursor),'default');
     await run(()=>drawingTest.tool('pen'));
 
+    await page.click('[data-board-tool="cube"]');
+    assert.equal(await page.locator('.note-shape-palette').isVisible(),true,'shape opens a compact color palette');
+    assert.equal(await page.locator('.note-shape-palette .note-color-swatch').count(),14);
+    assert.equal(await page.locator('.note-weight-control').first().isVisible(),false,'shape palette hides thickness');
+    assert.equal(await page.locator('.note-line-options').isVisible(),false,'shape palette hides pen line options');
+    await page.locator('.note-shape-palette [aria-label="Cor #ef4444"]').click();
+    assert.equal((await run(()=>drawingTest.toolState())).color,'#ef4444');
+    await page.click('[data-board-tool="pen"]');
     assert.equal(await page.locator('.note-toolbar-strip [data-board-tool="crop"]').count(),0,'crop is kept out of the compact primary toolbar');
     assert.equal(await page.locator('.note-drawing-more').isVisible(),false);
     await page.click('[aria-label="Mais ferramentas"]');

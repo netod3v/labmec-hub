@@ -71,3 +71,6 @@ html:is([data-theme="dark"],[data-theme="black"]) .note-reference-toolbar .note-
 .note-eraser-options svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;}
 
 .note-opacity-control{padding-top:10px;margin-top:9px;border-top:1px solid var(--border);}
+
+.note-pen-popover.note-shape-palette{width:230px;padding:10px;}
+.note-shape-palette .note-color-palette{padding-bottom:0;border-bottom:0;}
