@@ -27,16 +27,16 @@ export function initializeAdministration({button,request,getUid,getProfile,openM
  }
  function overview(result){
   content.replaceChildren();const cards=node('div',undefined,'admin-metrics');
-  for(const [key,label] of [['active','Contas ativas'],['online','Online agora'],['newWeek','Cadastros nos últimos 7 dias'],['removed','Contas excluídas']]){
+  for(const [key,label] of [['active','Contas ativas'],['online','Online agora'],['newWeek','Cadastros nos últimos 7 dias'],['blocked','Contas bloqueadas']]){
    const card=node('div',undefined,'admin-metric');card.append(node('span',label),node('strong',String(result.counts[key]??0)));cards.append(card);
   }
   const activity=node('section',undefined,'admin-summary');activity.append(node('h2','Atividade do laboratório'));
-  for(const [key,label] of [['total','Contas cadastradas, incluindo excluídas'],['posts','Publicações no mural'],['metas','Metas abertas'],['demandas','Demandas abertas']]){const row=node('div');row.append(node('span',label),node('strong',String(result.counts[key]??0)));activity.append(row);}
+  for(const [key,label] of [['total','Contas cadastradas'],['posts','Publicações no mural'],['metas','Metas abertas'],['demandas','Demandas abertas']]){const row=node('div');row.append(node('span',label),node('strong',String(result.counts[key]??0)));activity.append(row);}
   const note=node('p',`Atualizado em ${date(result.updatedAt)}. Use Atualizar para consultar os dados mais recentes.`,'admin-note');
   content.append(cards,activity,note);
  }
  function usersShell(){
-  content.innerHTML=`<form class="admin-filters" role="search"><label>Buscar usuário<input type="search" maxlength="120" name="query" placeholder="Nome, e-mail ou identificador" autocomplete="off"></label><label>Situação<select name="status"><option value="all">Todas as contas</option><option value="active">Ativas</option><option value="online">Online agora</option><option value="blocked">Bloqueadas</option><option value="removed">Excluídas</option></select></label><label>Acesso<select name="role"><option value="all">Todos os acessos</option><option value="member">Usuário</option><option value="support">Suporte</option><option value="admin">Administrador</option></select></label></form><div class="admin-users-result"></div><section class="admin-detail" hidden aria-label="Detalhes da conta"></section>`;
+  content.innerHTML=`<form class="admin-filters" role="search"><label>Buscar usuário<input type="search" maxlength="120" name="query" placeholder="Nome, e-mail ou identificador" autocomplete="off"></label><label>Situação<select name="status"><option value="all">Todas as contas</option><option value="active">Ativas</option><option value="online">Online agora</option><option value="blocked">Bloqueadas</option></select></label><label>Acesso<select name="role"><option value="all">Todos os acessos</option><option value="member">Usuário</option><option value="support">Suporte</option><option value="admin">Administrador</option></select></label></form><div class="admin-users-result"></div><section class="admin-detail" hidden aria-label="Detalhes da conta"></section>`;
   const form=content.querySelector('form');form.elements.query.value=query;form.elements.status.value=filter;form.elements.role.value=role;
   form.onsubmit=event=>{event.preventDefault();clearTimeout(debounce);query=form.elements.query.value;page=1;load();};
   form.elements.query.oninput=()=>{clearTimeout(debounce);debounce=setTimeout(()=>{query=form.elements.query.value;page=1;load();},300);};

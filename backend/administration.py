@@ -38,19 +38,20 @@ def user_rows(repository):
     result = []
     for row in repository.administration_users():
         profile = row['profile']
+        if profile.get('isRemoved') is True:
+            continue
         seen = stamp(presence.get(row['id'], {}).get('lastSeen'))
         login = stamp(access.get(row['id'], {}).get('lastLoginAt'))
-        removed = profile.get('isRemoved') is True
         blocked = profile.get('isBanned') is True
         result.append({
             'id': row['id'], 'name': profile.get('name') or 'Sem nome', 'email': row['email'],
             'units': sorted(k for k, v in (profile.get('sectors') or {}).items() if v),
             'affiliation': profile.get('affiliation'),
             'role': 'admin' if profile.get('isAdmin') is True else 'support' if profile.get('isSupport') is True else 'member',
-            'status': 'removed' if removed else 'blocked' if blocked else 'active',
+            'status': 'blocked' if blocked else 'active',
             'createdAt': stamp(row.get('created_at')) or stamp(profile.get('createdAt')),
             'lastSeen': max(seen or 0, login or 0) or None,
-            'online': bool(not removed and not blocked and presence.get(row['id'], {}).get('online') is True and seen and 0 <= now - seen < 90000),
+            'online': bool(not blocked and presence.get(row['id'], {}).get('online') is True and seen and 0 <= now - seen < 90000),
         })
     return result
 
@@ -81,7 +82,7 @@ def register_administration(app):
                 counts[name] = len(records) if name == 'posts' else sum(not item.get('done') for item in records)
         return jsonify({
             'counts': {**counts, 'total': len(users), 'active': sum(u['status'] == 'active' for u in users),
-                       'online': sum(u['online'] for u in users), 'removed': sum(u['status'] == 'removed' for u in users),
+                       'online': sum(u['online'] for u in users), 'blocked': sum(u['status'] == 'blocked' for u in users),
                        'newWeek': sum(bool(u['createdAt'] and now_ms() - 7 * 86400000 <= u['createdAt'] <= now_ms()) for u in users)},
             'canManageUsers': is_admin(g.user), 'updatedAt': now_ms(),
         })

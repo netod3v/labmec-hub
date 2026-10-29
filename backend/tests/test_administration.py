@@ -86,8 +86,25 @@ class AdministrationTests(unittest.TestCase):
         self.assertEqual({r['action'] for r in records}, {'user.permissions', 'user.updated', 'user.removed'})
         self.assertTrue(all(r['actorId'] == 'alice' and r['targetId'] == 'bob' for r in records))
         self.assertEqual(self.database.document('posts', 'by-bob')['text'], 'Preserved')
-        self.assertEqual(self.client.get('/api/admin/users?status=removed').json['items'][0]['email'], 'bob@example.org')
+        self.assertEqual(self.client.get('/api/admin/users?status=removed').json['items'], [])
+        self.assertNotIn('bob', {row['id'] for row in self.client.get('/api/admin/users').json['items']})
+        self.assertEqual(self.client.get('/api/admin/users?q=bob').json['total'], 0)
         self.assertEqual(self.write('/api/admin/users/bob/role', {'role': 'member'}).status_code, 404)
+
+    def test_deleted_accounts_do_not_fill_pages_or_overview(self):
+        self.admin()
+        for i in range(45):
+            self.database.create_user('deleted'+str(i), f'deleted{i}@example.org', '!', {
+                'name': 'Conta excluída', 'isRemoved': True, 'sectors': {'ghost-unit': True},
+                'createdAt': int(time.time() * 1000)})
+        self.database.accounts['bob']['profile']['isBanned'] = True
+        result = self.client.get('/api/admin/users').json
+        self.assertEqual((result['total'], result['pages'], len(result['items'])), (3, 1, 3))
+        self.assertNotIn('ghost-unit', result['knownUnits'])
+        self.assertEqual(self.client.get('/api/admin/users?q=deleted').json['total'], 0)
+        counts = self.client.get('/api/admin/overview').json['counts']
+        self.assertEqual((counts['total'], counts['active'], counts['blocked']), (3, 2, 1))
+        self.assertEqual(counts['newWeek'], 0)
 
     def test_self_access_protection_csrf_and_invalid_roles(self):
         self.admin()
