@@ -3019,7 +3019,6 @@ body.site-policy-open{overflow:hidden!important;}
         <p class="view-profile-bio" id="view-profile-bio"></p>
         <button class="btn" id="view-profile-edit-btn" type="button" hidden>Editar meu perfil</button>
         <button class="btn btn-primary" id="view-profile-message-btn" type="button" style="margin-top:14px;">Mandar mensagem</button>
-        <button class="btn" id="view-profile-support-btn" type="button" style="margin-top:10px;width:100%;display:none;"></button>
         <button class="btn" id="view-profile-ban-btn" type="button" style="margin-top:10px;width:100%;display:none;"></button>
         </aside>
         <div class="profile-overview" id="view-profile-overview"></div>
@@ -5759,7 +5758,6 @@ const viewProfileSector = document.getElementById('view-profile-sector');
 const viewProfileBio = document.getElementById('view-profile-bio');
 const viewProfileMessageBtn = document.getElementById('view-profile-message-btn');
 const viewProfileBanBtn = document.getElementById('view-profile-ban-btn');
-const viewProfileSupportBtn = document.getElementById('view-profile-support-btn');
 const viewProfileEditBtn = document.getElementById('view-profile-edit-btn');
 viewProfileEditBtn.onclick = () => { closeViewProfile(); openProfileModal(false); };
 
@@ -5947,15 +5945,6 @@ function openViewProfile(uid, fallbackName, showBack, returnConversation=null){
     viewProfileBanBtn.className = 'btn btn-danger';
   } else {
     viewProfileBanBtn.style.display = 'none';
-  }
-
-  const canManageSupport = isAdmin() && uid && uid !== currentUid;
-  if(canManageSupport){
-    viewProfileSupportBtn.style.display = '';
-    viewProfileSupportBtn.textContent = support ? 'Remover marca de suporte' : 'Marcar como suporte';
-    viewProfileSupportBtn.className = 'btn';
-  } else {
-    viewProfileSupportBtn.style.display = 'none';
   }
 
   if(viewProfileModal.classList.contains('hidden')){
@@ -6346,21 +6335,6 @@ function confirmRemoveMember(name){
     document.body.append(dialog);dialog.showModal();
   });
 }
-viewProfileSupportBtn.addEventListener('click', ()=>{
-  if(!viewingProfileUid || !isAdmin()) return;
-  const profile = state.users[viewingProfileUid] || {};
-  const support = !!profile.isSupport;
-  const name = viewProfileName.textContent || 'essa pessoa';
-  const ok = confirm(
-    support
-      ? `Remover a marca de suporte de ${name}?`
-      : `Marcar ${name} como suporte? A etiqueta amarela "suporte" vai aparecer no nome dela em todo o site, e ela passa a aparecer como opção de contato no botão de Suporte.`
-  );
-  if(!ok) return;
-  update(ref(db, 'users/'+viewingProfileUid), { isSupport: !support }).then(()=>{
-    closeViewProfile();
-  }).catch(handleDbError);
-});
 /* ===== mensagens diretas (DM) =====
    Cada conversa fica em dms/{chatId}/messages, onde chatId é os dois
    uids ordenados e unidos por '__'. Também mantemos um índice
