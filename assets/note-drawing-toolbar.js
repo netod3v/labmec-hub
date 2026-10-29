@@ -30,6 +30,14 @@ export function initializeDrawingToolbar(options) {
     button.onclick=()=>{if(color.value.toLowerCase()===entry[1]){editingSwatch=entry;color.click();return;}color.value=entry[1];color.dispatchEvent(new Event('input',{bubbles:true}));refresh();};palette.append(button);swatches.push(entry);
   }
   color.title='Escolher outra cor';palette.append(color);popup.append(palette);
+  const markerPalette=document.createElement('div');markerPalette.className='note-color-palette note-marker-palette';markerPalette.setAttribute('aria-label','Cores do marca-texto');
+  const markerSwatches=[];
+  for(const value of ['#fff34d','#ff9fa5','#86edb0','#94c4ff','#d7afff','#ffbd78','#111827']){
+    const item=document.createElement('button');item.type='button';item.className='note-color-swatch';item.style.setProperty('--swatch',value);item.setAttribute('aria-label','Marca-texto '+value);
+    item.onclick=()=>{editingSwatch=null;color.value=value;color.dispatchEvent(new Event('input',{bubbles:true}));refresh();};markerPalette.append(item);markerSwatches.push([item,value]);
+  }
+  popup.append(markerPalette);
+
   const weight=document.createElement('label');weight.className='note-weight-control';
   const range=document.createElement('input');range.type='range';range.min='1';range.max='30';range.value=size.value;range.setAttribute('aria-label','Espessura do traço');
   const output=document.createElement('output');weight.append('Espessura',range,output);popup.append(weight);
@@ -37,6 +45,10 @@ export function initializeDrawingToolbar(options) {
     if(![...size.options].some(option=>option.value===range.value))size.add(new Option(range.value+' px',range.value));
     size.value=range.value;size.dispatchEvent(new Event('change',{bubbles:true}));refresh();
   };
+  const opacityControl=document.createElement('label');opacityControl.className='note-weight-control note-opacity-control';
+  const opacityRange=document.createElement('input');opacityRange.type='range';opacityRange.min='5';opacityRange.max='100';opacityRange.step='1';opacityRange.setAttribute('aria-label','Opacidade do marca-texto');
+  const opacityOutput=document.createElement('output');opacityControl.append('Opacidade',opacityRange,opacityOutput);popup.append(opacityControl);
+  opacityRange.oninput=()=>{options.setOpacity?.(Number(opacityRange.value)/100);refresh();};
   const styles=document.createElement('div');styles.className='note-line-options';styles.setAttribute('aria-label','Estilo do traço');
   const styleButtons=[];
   for(const [value,label,content] of [['solid','Traço contínuo','<path d="M3 12h26"/>'],['dashed','Traço tracejado','<path d="M3 12h26" stroke-dasharray="4 3"/>'],['dotted','Traço pontilhado','<path d="M3 12h26" stroke-dasharray="1 4" stroke-linecap="round"/>'],['arrow','Traço com seta','<path d="M3 12h26m-5-5 5 5-5 5"/>']]){
@@ -157,7 +169,7 @@ export function initializeDrawingToolbar(options) {
     for(const [item,value] of shapeButtons)item.classList.toggle('active',state.tool==='pen'&&shape.value===value);
     for(let i=0;i<swatches.length;i++){const entry=swatches[i],item=entry[0],value=state.preferences?.palette?.[i]||entry[1];entry[1]=value;item.style.setProperty('--swatch',value);item.setAttribute('aria-label','Cor '+value);item.setAttribute('aria-pressed',String(color.value.toLowerCase()===value));}
     for(const [item,value] of styleButtons)item.setAttribute('aria-pressed',String(state.lineStyle===value));
-    const erasing=state.tool==='eraser';palette.hidden=erasing;styles.hidden=erasing;eraserOptions.hidden=!erasing;
+    const erasing=state.tool==='eraser',highlighting=state.tool==='pen'&&ink.value==='highlighter';palette.hidden=erasing||highlighting;markerPalette.hidden=!highlighting;for(const [item,value] of markerSwatches)item.setAttribute('aria-pressed',String(color.value.toLowerCase()===value));styles.hidden=erasing||highlighting;opacityControl.hidden=!highlighting;opacityRange.value=String(Math.round((state.preferences?.pens?.highlighter?.opacity??.4)*100));opacityOutput.value=opacityRange.value+' %';eraserOptions.hidden=!erasing;
     for(const [item,value] of eraserButtons)item.setAttribute('aria-pressed',String(eraserMode.value===value));
     range.setAttribute('aria-label',erasing?'Espessura da borracha':'Espessura do tra\u00e7o');
     range.value=size.value;output.value=size.value+' px';

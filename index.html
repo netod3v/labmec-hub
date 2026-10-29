@@ -4421,7 +4421,7 @@ function noteResizeSelection(point){
 function noteSelectedByLasso(points){return noteDrawObjects.filter(o=>{const b=noteObjectBounds(o),vertices=o.type==='stroke'?o.points:[{x:b.x1,y:b.y1},{x:b.x2,y:b.y1},{x:b.x2,y:b.y2},{x:b.x1,y:b.y2}];return vertices.length&&vertices.every(p=>pointInLasso(p,points));}).map(o=>o.id);}
 function setNoteBoardPreferences(value){noteBoardSettings=normalizeWhiteboardSettings(value);noteSaveBoardPreferences(noteBoardSettings);if(noteDrawTool==='pen')chooseNotePen(notePenId(),false);noteDrawingToolbar?.refresh();renderNoteDrawing();}
 function notePenId(){return noteInkType.value==='pencil'?'secondary':noteInkType.value==='highlighter'?'highlighter':'pen';}
-function captureNotePen(){const id=notePenId();noteBoardSettings.pens[id]={color:noteDrawColor.value,width:Number(noteDrawSize.value),lineStyle:noteLineStyle};noteSaveBoardPreferences(noteBoardSettings);updateNoteDrawingCursor();}
+function captureNotePen(){const id=notePenId();noteBoardSettings.pens[id]={...noteBoardSettings.pens[id],color:noteDrawColor.value,width:Number(noteDrawSize.value),lineStyle:noteLineStyle};noteSaveBoardPreferences(noteBoardSettings);updateNoteDrawingCursor();}
 function chooseNotePen(id,remember=true){
   if(remember)captureNotePen();const preset=noteBoardSettings.pens[id];
   noteInkType.value=id==='secondary'?'pencil':id==='highlighter'?'highlighter':'pen';noteDrawColor.value=preset.color;
@@ -4532,7 +4532,7 @@ function notePoint(e){const r=noteDrawCanvas.getBoundingClientRect();return{x:(e
 function drawNoteObject(ctx,o){
   ctx.save();ctx.strokeStyle=o.color||'#244b35';ctx.lineWidth=o.width||5;ctx.lineCap='round';ctx.lineJoin='round';
   if(o.ink==='pencil')ctx.globalAlpha=.68;
-  if(o.ink==='highlighter'){ctx.globalAlpha=.3;ctx.lineWidth=(o.width||5)*4;ctx.globalCompositeOperation='multiply';}
+  if(o.ink==='highlighter'){ctx.globalAlpha=Number.isFinite(o.opacity)?Math.max(.05,Math.min(1,o.opacity)):.3;ctx.lineWidth=(o.width||5)*(o.widthScale===1?1:4);ctx.globalCompositeOperation='multiply';}
   if(o.type==='bitmap'){
     const image=noteBitmap(o.source);
     if(image&&(image instanceof HTMLCanvasElement||(image.complete&&image.naturalWidth>0)))ctx.drawImage(image,o.x1,o.y1,o.x2-o.x1,o.y2-o.y1);
@@ -4736,6 +4736,7 @@ noteDrawCanvas.addEventListener('pointerdown',e=>{
   }
   const shape=noteShapeTool.value;noteRecognitionLocked=false;noteForceLine=noteModifierHeld(e,noteBoardSettings.shortcuts.straight);
   noteDrawCurrent=shape!=='none'?{id:'draw-'+crypto.randomUUID(),type:shape,x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:noteDrawColor.value,width:Number(noteDrawSize.value),lineStyle:noteLineStyle}:{id:'draw-'+crypto.randomUUID(),type:'stroke',points:[p],color:noteDrawColor.value,width:Number(noteDrawSize.value),ink:noteInkType.value==='pencil'?'secondary':noteInkType.value,lineStyle:noteLineStyle};
+  if(noteDrawCurrent.ink==='highlighter'){noteDrawCurrent.opacity=noteBoardSettings.pens.highlighter.opacity;noteDrawCurrent.widthScale=1;}
   armNoteRecognition();
 });
 noteDrawCanvas.addEventListener('pointermove',e=>{
@@ -9200,6 +9201,7 @@ noteDrawingToolbar=initializeDrawingToolbar({
   undo:noteDrawUndo,redo:noteDrawRedo,clear:noteDrawClear,zoomIn:noteZoomIn,zoomOut:noteZoomOut,zoomLabel:noteZoomLabel,
   getState:()=>({tool:noteDrawTool,lineStyle:noteLineStyle,hasArea:!!noteAreaRect||noteSelection().length>0,preferences:noteBoardSettings}),setTool:selectNoteDrawTool,selectPen:chooseNotePen,
   setLineStyle:value=>{noteLineStyle=value;captureNotePen();},
+  setOpacity:value=>{noteBoardSettings.pens.highlighter.opacity=value;noteSaveBoardPreferences(noteBoardSettings);},
   setPalette:palette=>{noteBoardSettings.palette=palette;noteSaveBoardPreferences(noteBoardSettings);},
   stamp:async()=>{try{await prepareNoteLogo();selectNoteDrawTool('stamp');noteAreaHint.textContent='Toque no quadro para carimbar a logo do Hub.';}catch{noteAreaHint.textContent='Não foi possível carregar a logo. Tente novamente.';}},
   close:()=>{},

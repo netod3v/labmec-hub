@@ -67,7 +67,7 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
             const toolbar=document.createElement('div');toolbar.className='whiteboard-toolbar';panel.append(toolbar);
             for(const item of [noteDrawPen,noteDrawEraser,noteDrawPan,noteDrawSelect,noteDrawUndo,noteDrawRedo,noteDrawClear,noteZoomIn,noteZoomOut]){item.className='whiteboard-tool';item.innerHTML='<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>';}
             noteDrawPen.id='note-draw-pen';noteZoomLabel.id='note-zoom-label';noteAreaTools.className='note-area-tools';
-            noteDrawingToolbar=initializeDrawingToolbar({toolbar,areaTools:noteAreaTools,pen:noteDrawPen,eraser:noteDrawEraser,pan:noteDrawPan,select:noteDrawSelect,color:noteDrawColor,size:noteDrawSize,ink:noteInkType,eraserMode:noteEraserMode,shape:noteShapeTool,undo:noteDrawUndo,redo:noteDrawRedo,clear:noteDrawClear,zoomIn:noteZoomIn,zoomOut:noteZoomOut,zoomLabel:noteZoomLabel,getState:()=>({tool:noteDrawTool,lineStyle:noteLineStyle,hasArea:!!noteAreaRect||noteSelection().length>0,preferences:noteBoardSettings}),setTool:selectNoteDrawTool,selectPen:chooseNotePen,setLineStyle:value=>{noteLineStyle=value;},stamp:async()=>{await prepareNoteLogo();selectNoteDrawTool('stamp');},close:()=>{},text:()=>editNoteText(),settings:()=>window.boardSettings.openWhiteboardSettings({host:document.body,getSettings:()=>noteBoardSettings,setSettings:setNoteBoardPreferences}),setPalette:value=>{noteBoardSettings.palette=value;},importFile:async file=>{const canvas=file.type==='application/pdf'?await window.boardFiles.loadWhiteboardPDF(file,chooseNotePDFPage):await window.boardFiles.loadWhiteboardImage(file);if(canvas)addNoteBitmap(canvas);},exportFile:async type=>{const canvas=noteExportCanvas();if(type==='pdf')window.boardFiles.downloadWhiteboard(await window.boardFiles.canvasPDF(canvas),'quadro.pdf');else canvas.toBlob(blob=>window.boardFiles.downloadWhiteboard(blob,'quadro.png'),'image/png');}});
+            noteDrawingToolbar=initializeDrawingToolbar({toolbar,areaTools:noteAreaTools,pen:noteDrawPen,eraser:noteDrawEraser,pan:noteDrawPan,select:noteDrawSelect,color:noteDrawColor,size:noteDrawSize,ink:noteInkType,eraserMode:noteEraserMode,shape:noteShapeTool,undo:noteDrawUndo,redo:noteDrawRedo,clear:noteDrawClear,zoomIn:noteZoomIn,zoomOut:noteZoomOut,zoomLabel:noteZoomLabel,getState:()=>({tool:noteDrawTool,lineStyle:noteLineStyle,hasArea:!!noteAreaRect||noteSelection().length>0,preferences:noteBoardSettings}),setTool:selectNoteDrawTool,selectPen:chooseNotePen,setLineStyle:value=>{noteLineStyle=value;},stamp:async()=>{await prepareNoteLogo();selectNoteDrawTool('stamp');},close:()=>{},text:()=>editNoteText(),settings:()=>window.boardSettings.openWhiteboardSettings({host:document.body,getSettings:()=>noteBoardSettings,setSettings:setNoteBoardPreferences}),setOpacity:value=>{noteBoardSettings.pens.highlighter.opacity=value;},setPalette:value=>{noteBoardSettings.palette=value;},importFile:async file=>{const canvas=file.type==='application/pdf'?await window.boardFiles.loadWhiteboardPDF(file,chooseNotePDFPage):await window.boardFiles.loadWhiteboardImage(file);if(canvas)addNoteBitmap(canvas);},exportFile:async type=>{const canvas=noteExportCanvas();if(type==='pdf')window.boardFiles.downloadWhiteboard(await window.boardFiles.canvasPDF(canvas),'quadro.pdf');else canvas.toBlob(blob=>window.boardFiles.downloadWhiteboard(blob,'quadro.png'),'image/png');}});
           }
           ,toolState(){return {tool:noteDrawTool,ink:noteInkType.value,size:noteDrawSize.value,color:noteDrawColor.value,lineStyle:noteLineStyle};}
           ,stampPixels(){const data=noteDrawingSnapshot().getContext('2d').getImageData(520,320,160,160).data;return data.some((v,i)=>i%4===3&&v>0);}
@@ -196,12 +196,24 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     await run(()=>{drawingTest.seed();drawingTest.initializeBar();});
     await page.click('[data-board-tool="eraser"]');
     assert.equal(await page.locator('.note-eraser-options').isVisible(),true);
-    assert.equal(await page.locator('.note-color-palette').isVisible(),false,'eraser popup hides pen colors');
+    assert.equal(await page.locator('.note-color-palette:not(.note-marker-palette)').isVisible(),false,'eraser popup hides pen colors');
     await page.locator('.note-eraser-options button').nth(1).click();
     assert.equal(await page.locator('.note-eraser-options button').nth(1).getAttribute('aria-pressed'),'true');
     await page.locator('.note-eraser-options button').first().click();
     await page.getByRole('slider',{name:'Espessura da borracha',exact:true}).fill('12');
     assert.equal((await run(()=>drawingTest.toolState())).size,'12');
+
+    await page.click('[data-board-tool="highlighter"]');
+    assert.equal(await page.locator('.note-line-options').isVisible(),false);
+    await page.getByRole('slider',{name:'Opacidade do marca-texto',exact:true}).fill('65');
+    assert.equal((await run(()=>drawingTest.settings())).pens.highlighter.opacity,.65);
+    const beforeHighlight=await run(()=>drawingTest.objects());
+    await drag(100,200,200,200);
+    assert.equal((await run(()=>drawingTest.objects())).at(-1).opacity,.65,'new highlight stores the chosen opacity');
+    assert.ok(Math.abs((await run(()=>drawingTest.pixel(150,200)))[3]-166)<=1,'chosen opacity controls the rendered ink');
+    await run(()=>drawingTest.reload());
+    assert.equal((await run(()=>drawingTest.objects())).at(-1).opacity,.65,'opacity survives saving and reopening');
+    await page.evaluate(objects=>drawingTest.newObjects(objects),beforeHighlight);
 
     await run(()=>drawingTest.tool('pen'));
     assert.match(await page.locator('canvas').evaluate(el=>getComputedStyle(el).cursor),/data:image\/svg\+xml/,'drawing uses a circular SVG cursor');

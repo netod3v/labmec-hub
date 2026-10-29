@@ -11,7 +11,7 @@ export const WHITEBOARD_SHORTCUTS = [
 export function defaultWhiteboardSettings() {
   return {background:'color',color:'#ffffff',recognize:true,recognizeTypes:['ellipse','rect','triangle','line'],wheel:'zoom',hiddenTools:[],palette:['#111827','#ffffff','#ef4444','#2563eb','#16a34a','#f59e0b','#a855f7'],
     shortcuts:{pan:'Space',zoomModifier:'Control',straight:'Control',undo:'Ctrl+z',redo:'Ctrl+y',delete:'Delete',pen:'p',secondary:'h',eraser:'e',text:'t'},
-    pens:{pen:{color:'#111827',width:4,lineStyle:'solid'},secondary:{color:'#ef4444',width:4,lineStyle:'solid'},highlighter:{color:'#111827',width:9,lineStyle:'solid'}}};
+    pens:{pen:{color:'#111827',width:4,lineStyle:'solid'},secondary:{color:'#ef4444',width:4,lineStyle:'solid'},highlighter:{color:'#111827',width:20,lineStyle:'solid',opacity:.4}}};
 }
 export function normalizeWhiteboardSettings(value) {
   const defaults=defaultWhiteboardSettings(),raw=value&&typeof value==='object'?value:{};
@@ -26,6 +26,7 @@ export function normalizeWhiteboardSettings(value) {
   for(const id of Object.keys(defaults.pens)){const pen=raw.pens?.[id];if(!pen||typeof pen!=='object')continue;
     if(/^#[a-f\d]{6}$/i.test(pen.color))settings.pens[id].color=pen.color;
     if(Number.isFinite(pen.width)&&pen.width>=1&&pen.width<=30)settings.pens[id].width=pen.width;
+    if(id==='highlighter'&&Number.isFinite(pen.opacity)&&pen.opacity>=.05&&pen.opacity<=1)settings.pens[id].opacity=pen.opacity;
     if(['solid','dashed','dotted','arrow'].includes(pen.lineStyle))settings.pens[id].lineStyle=pen.lineStyle;
   }
   return settings;
