@@ -15,6 +15,13 @@ const icons = {
   settings:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2-5h4l1 3 3 1 3-1 2 4-2 2v3l1 2-3 3-3-1-3 2H9l-1-3-3-1-2-3 2-3V8l3-1 2-4Z',
 };
 
+const solidIcons={
+  cube:['M3 7h13v14H3V7l5-5h13v14l-5 5M16 7l5-5','M8 2v14H21M8 16l-5 5'],
+  cylinder:['M21 5a9 2.5 0 1 1-18 0 9 2.5 0 1 1 18 0M3 5v14a9 2.5 0 0 0 18 0V5','M3 19a9 2.5 0 0 1 18 0'],
+  pyramid:['M11 2 2 21h14l6-5L11 2l5 19','M11 2 7 16 2 21M7 16h15'],
+  sphere:['M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0M2 12a10 2 0 0 0 20 0M12 2a2 10 0 0 0 0 20','M2 12a10 2 0 0 1 20 0M12 2a2 10 0 0 1 0 20']
+};
+
 export function initializeDrawingToolbar(options) {
   const {toolbar,areaTools,pen,eraser,pan,select,color,size,ink,eraserMode,shape,undo,redo,clear,zoomIn,zoomOut,zoomLabel,getState,setTool,stamp,close}=options;
   const panel=toolbar.parentElement;
@@ -79,7 +86,7 @@ export function initializeDrawingToolbar(options) {
   const shapes=group(),shapeButtons=[];
   for(const [value,label] of [['line','Linha'],['rect','Retângulo'],['ellipse','Círculo'],['triangle','Triângulo'],['cube','Cubo'],['cylinder','Cilindro'],['pyramid','Pirâmide'],['sphere','Esfera']]){
     if(![...shape.options].some(option=>option.value===value))shape.add(new Option(label,value));
-    const item=track(button(shapes,label,icons[value],()=>{shape.value=value;shape.dispatchEvent(new Event('change'));popup.hidden=true;refresh();}),value);shapeButtons.push([item,value]);
+    const item=track(button(shapes,label,icons[value],()=>{shape.value=value;shape.dispatchEvent(new Event('change'));popup.hidden=true;refresh();}),value);if(solidIcons[value])item.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+solidIcons[value][0]+'"/><path d="'+solidIcons[value][1]+'" stroke-dasharray="2 2"/></svg>';shapeButtons.push([item,value]);
   }
   const branding=group();
   const stampButton=document.createElement('button');stampButton.type='button';stampButton.className='whiteboard-tool note-logo-stamp';stampButton.title='Carimbo com a logo do Hub';stampButton.setAttribute('aria-label',stampButton.title);

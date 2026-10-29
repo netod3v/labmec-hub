@@ -452,6 +452,17 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     assert.equal(await page.locator('canvas').evaluate(el=>el.parentElement.scrollTop),0,'Mover plus reverse wheel pans up');
     await page.keyboard.down('Control');await page.mouse.wheel(0,-120);await page.keyboard.up('Control');await page.waitForTimeout(80);
     assert.ok(await run(()=>drawingTest.state().zoom)>1,'zoom modifier still works while Mover is selected');
+    await run(()=>drawingTest.newObjects([
+      {id:'cube',type:'cube',x1:100,y1:100,x2:300,y2:300,color:'#111827',width:3},
+      {id:'sphere',type:'sphere',x1:350,y1:100,x2:550,y2:300,color:'#111827',width:3},
+      {id:'cylinder',type:'cylinder',x1:600,y1:100,x2:750,y2:350,color:'#111827',width:3},
+      {id:'pyramid',type:'pyramid',x1:100,y1:400,x2:300,y2:600,color:'#111827',width:3}
+    ]));
+    const hiddenEdge=await run(()=>Array.from({length:100},(_,i)=>drawingTest.pixel(150,120+i)[3]));
+    assert.ok(hiddenEdge.some(alpha=>alpha===0)&&hiddenEdge.some(alpha=>alpha>0),'hidden cube edge has visible dashes separated by gaps');
+    assert.ok(await run(()=>Array.from({length:100},(_,i)=>drawingTest.pixel(100,170+i)[3]).every(alpha=>alpha>0)),'visible cube edge stays continuous');
+    const solidPreview=await run(()=>{const c=document.createElement('canvas');c.width=900;c.height=700;c.getContext('2d').drawImage(drawingTest.exportCanvas(),0,0);return c.toDataURL().split(',')[1];});
+    fs.writeFileSync(path.join(process.env.TEMP||'/tmp','labmec-solid-shapes.png'),Buffer.from(solidPreview,'base64'));
     console.log('PASS: legacy drawing, shapes, laser, recognition, lasso/resize, text, custom shortcuts, settings, hide/reopen, mouse/keyboard/touch, image import, PDF round trip, responsive layout');
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

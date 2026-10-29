@@ -87,10 +87,36 @@ export function drawWhiteboardSolid(ctx,o) {
   const x=Math.min(o.x1,o.x2),y=Math.min(o.y1,o.y2),w=Math.abs(o.x2-o.x1),h=Math.abs(o.y2-o.y1),cx=x+w/2,cy=y+h/2;
   const path=points=>{ctx.moveTo(...points[0]);for(const point of points.slice(1))ctx.lineTo(...point);};
   if(o.type==='triangle')path([[cx,y],[x+w,y+h],[x,y+h],[cx,y]]);
-  if(o.type==='cube'){const d=Math.min(w,h)*.25;path([[x,y+d],[x+w-d,y+d],[x+w-d,y+h],[x,y+h],[x,y+d],[x+d,y],[x+w,y],[x+w,y+h-d],[x+w-d,y+h]]);path([[x+w-d,y+d],[x+w,y]]);path([[x+d,y],[x+d,y+h-d],[x,y+h]]);}
-  if(o.type==='cylinder'){const r=Math.min(h*.16,w*.25);ctx.ellipse(cx,y+r,w/2,r,0,0,2*Math.PI);path([[x,y+r],[x,y+h-r]]);ctx.ellipse(cx,y+h-r,w/2,r,0,0,Math.PI);path([[x+w,y+h-r],[x+w,y+r]]);ctx.moveTo(x,y+h-r);ctx.ellipse(cx,y+h-r,w/2,r,0,Math.PI,2*Math.PI);}
-  if(o.type==='pyramid'){path([[cx,y],[x,y+h*.8],[cx,y+h],[x+w,y+h*.8],[cx,y]]);path([[cx,y],[cx,y+h]]);path([[x,y+h*.8],[cx,y+h*.6],[x+w,y+h*.8]]);}
-  if(o.type==='sphere'){ctx.ellipse(cx,cy,w/2,h/2,0,0,2*Math.PI);ctx.moveTo(x,cy);ctx.ellipse(cx,cy,w/2,h*.16,0,0,2*Math.PI);ctx.moveTo(cx+w*.16,cy);ctx.ellipse(cx,cy,w*.16,h/2,0,0,2*Math.PI);}
+  if(!['cube','cylinder','pyramid','sphere'].includes(o.type))return;
+  ctx.save();ctx.setLineDash([]);ctx.beginPath();
+  if(o.type==='cube'){
+    const d=Math.min(w,h)*.25;
+    path([[x,y+d],[x+w-d,y+d],[x+w-d,y+h],[x,y+h],[x,y+d],[x+d,y],[x+w,y],[x+w,y+h-d],[x+w-d,y+h]]);path([[x+w-d,y+d],[x+w,y]]);
+  }
+  if(o.type==='cylinder'){
+    const r=Math.min(h*.12,w*.14);
+    ctx.moveTo(x+w,y+r);ctx.ellipse(cx,y+r,w/2,r,0,0,2*Math.PI);
+    path([[x,y+r],[x,y+h-r]]);path([[x+w,y+r],[x+w,y+h-r]]);
+    ctx.moveTo(x+w,y+h-r);ctx.ellipse(cx,y+h-r,w/2,r,0,0,Math.PI);
+  }
+  if(o.type==='pyramid'){
+    const apex=[x+w*.46,y],left=[x,y+h],front=[x+w*.72,y+h],right=[x+w,y+h*.75];
+    path([apex,left,front,right,apex,front]);
+  }
+  if(o.type==='sphere'){
+    ctx.moveTo(x+w,cy);ctx.ellipse(cx,cy,w/2,h/2,0,0,2*Math.PI);
+    ctx.moveTo(x+w,cy);ctx.ellipse(cx,cy,w/2,h*.09,0,0,Math.PI);
+    ctx.moveTo(cx,y+h);ctx.ellipse(cx,cy,w*.09,h/2,0,Math.PI/2,Math.PI*1.5);
+  }
+  ctx.stroke();ctx.beginPath();ctx.setLineDash([Math.max(4,ctx.lineWidth*2.5),Math.max(4,ctx.lineWidth*2.5)]);
+  if(o.type==='cube'){const d=Math.min(w,h)*.25;path([[x+d,y],[x+d,y+h-d],[x,y+h]]);path([[x+d,y+h-d],[x+w,y+h-d]]);}
+  if(o.type==='cylinder'){const r=Math.min(h*.12,w*.14);ctx.moveTo(x,y+h-r);ctx.ellipse(cx,y+h-r,w/2,r,0,Math.PI,2*Math.PI);}
+  if(o.type==='pyramid'){const back=[x+w*.25,y+h*.75];path([[x+w*.46,y],back,[x,y+h]]);path([back,[x+w,y+h*.75]]);}
+  if(o.type==='sphere'){
+    ctx.moveTo(x,cy);ctx.ellipse(cx,cy,w/2,h*.09,0,Math.PI,2*Math.PI);
+    ctx.moveTo(cx,y);ctx.ellipse(cx,cy,w*.09,h/2,0,-Math.PI/2,Math.PI/2);
+  }
+  ctx.stroke();ctx.restore();ctx.beginPath();
 }
 export function resizeWhiteboardObjects(objects,before,after) {
   const sx=(after.x2-after.x1)/(before.x2-before.x1||1),sy=(after.y2-after.y1)/(before.y2-before.y1||1);
