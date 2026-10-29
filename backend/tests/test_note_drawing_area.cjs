@@ -33,7 +33,7 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     await page.evaluate(({core,handlers,geometry,controls,toolbarSource,modelSource})=>{
       const noteDrawCanvas=document.querySelector('canvas');noteDrawCanvas.tabIndex=0;
       const noteStudioModal=document.body,noteStudioBody=document.body;noteStudioBody.dataset.mode='draw';
-      const noteDrawViewport=document.body;
+      let noteDrawViewport=document.body;
       const noteZoomLabel=document.createElement('span');
       const noteAreaTools=document.getElementById('controls');
       noteAreaTools.innerHTML=['area','crop'].map(x=>`<button data-area-tool="${x}">${x}</button>`).join('')+
@@ -50,6 +50,10 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
       const code=geometry+'\n'+modelSource+'\n'+toolbarSource+'\n'+core+'\n'+handlers+`
         window.drawingTest={
           seed(){noteShapeTool.value='none';noteInkType.value='pen';noteLineStyle='solid';noteDrawCanvas.width=1400;noteDrawCanvas.height=760;noteDrawObjects=[{id:'line',type:'stroke',points:[{x:0,y:50},{x:150,y:50}],width:6,color:'#ff0000'}];noteLegacyImage=null;noteSelectedObjectId=null;clearNoteArea();noteSelectedIds.clear();noteSelectedObjectId=null;noteLassoPoints=[];noteLaserPoints=[];noteResizeDrag=null;noteBoardSettings=defaultWhiteboardSettings();noteDrawHistory.clear();noteDrawRedoHistory.clear();noteDrawPendingHistory=null;noteDrawZoom=1;applyNoteDrawZoom();renderNoteDrawing();},
+          fitViewport(width,height,zoom){
+            const viewport=document.createElement('div');viewport.id='note-draw-viewport';viewport.style.cssText='position:fixed;left:0;top:0;width:'+width+'px;height:'+height+'px;overflow:auto';
+            document.body.append(viewport);viewport.append(noteDrawCanvas);noteDrawViewport=viewport;noteDrawZoom=zoom;applyNoteDrawZoom();renderNoteDrawing();
+          },
           tool:selectNoteDrawTool,
           undo(){noteDrawUndo.click();},
           pixel(x,y){return [...noteDrawingSnapshot().getContext('2d').getImageData(x,y,1,1).data];},
@@ -395,6 +399,14 @@ const controls = ['noteDrawPen','noteDrawEraser','noteDrawPan','noteDrawSelect',
     await page.click('[aria-label="Fechar configurações"]');
     assert.deepEqual(await page.evaluate(()=>boardCSPViolations),[],'PDF import/export respects the production CSP');
     assert.deepEqual(errors,[]);
+    await page.setViewportSize({width:1600,height:1100});
+    await run(()=>{drawingTest.seed();drawingTest.fitViewport(1500,900,.5);drawingTest.tool('pen');});
+    const expanded=await run(()=>drawingTest.state());
+    assert.equal(expanded.width,3000);assert.equal(expanded.height,1800);
+    assert.equal((await run(()=>drawingTest.objects()))[0].points[1].x,150,'expanding the board preserves existing coordinates');
+    await page.mouse.move(1450,820);await page.mouse.down();await page.mouse.move(1470,840);await page.mouse.up();
+    assert.ok((await run(()=>drawingTest.objects())).some(o=>(o.points?.at(-1)?.x??o.x2)>2800),'the formerly empty edge accepts strokes after zooming out');
+    assert.equal((await run(()=>drawingTest.state())).saved.drawingWidth,3000,'expanded dimensions are saved with the drawing');
     console.log('PASS: legacy drawing, shapes, laser, recognition, lasso/resize, text, custom shortcuts, settings, hide/reopen, mouse/keyboard/touch, image import, PDF round trip, responsive layout');
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

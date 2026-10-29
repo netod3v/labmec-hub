@@ -4523,7 +4523,7 @@ function noteDrawingState(){return {objects:cloneNoteObjects(noteDrawObjects),wi
 function restoreNoteDrawing(snapshot){
   noteDrawPendingHistory=null;
   noteDrawObjects=cloneNoteObjects(snapshot.objects);noteDrawCanvas.width=snapshot.width;noteDrawCanvas.height=snapshot.height;
-  noteLegacyImage=null;if(snapshot.legacy){noteLegacyImage=new Image();noteLegacyImage.onload=()=>{renderNoteDrawing();updateNoteAreaTools();};noteLegacyImage.src=snapshot.legacy;}
+  noteLegacyImage=null;if(snapshot.legacy){noteLegacyImage=new Image();noteLegacyImage.onload=()=>{applyNoteDrawZoom();renderNoteDrawing();updateNoteAreaTools();};noteLegacyImage.src=snapshot.legacy;}
   noteSelectedIds.clear();noteSelectedObjectId=null;clearNoteArea();applyNoteDrawZoom();saveNoteDrawing();
 }
 function notePlainToHtml(text){ return escapeHtml(String(text||'')).replace(/\n/g,'<br>'); }
@@ -4610,7 +4610,22 @@ function updateNoteDrawingCursor(){
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="${radius}" fill="none" stroke="white" stroke-width="3"/><circle cx="32" cy="32" r="${radius}" fill="none" stroke="black" stroke-width="1"/></svg>`;
   noteDrawCanvas.style.cursor=`url("data:image/svg+xml,${encodeURIComponent(svg)}") 32 32, crosshair`;
 }
+function fitNoteDrawingSurface(){
+  if(noteDrawViewport.id!=='note-draw-viewport'||!noteDrawViewport.clientWidth||!noteDrawViewport.clientHeight)return;
+  noteDrawZoom=Math.max(noteDrawZoom,noteDrawViewport.clientWidth/4096,noteDrawViewport.clientHeight/4096);
+  const width=Math.min(4096,Math.max(noteDrawCanvas.width,Math.ceil(noteDrawViewport.clientWidth/noteDrawZoom)));
+  const height=Math.min(4096,Math.max(noteDrawCanvas.height,Math.ceil(noteDrawViewport.clientHeight/noteDrawZoom)));
+  if(width===noteDrawCanvas.width&&height===noteDrawCanvas.height)return;
+  if(noteLegacyImage){
+    if(!noteLegacyImage.complete||!noteLegacyImage.naturalWidth)return;
+    const legacy=document.createElement('canvas');legacy.width=noteDrawCanvas.width;legacy.height=noteDrawCanvas.height;
+    legacy.getContext('2d').drawImage(noteLegacyImage,0,0,legacy.width,legacy.height);
+    noteDrawObjects.unshift(noteBitmapObject(legacy));noteLegacyImage=null;
+  }
+  noteDrawCanvas.width=width;noteDrawCanvas.height=height;
+}
 function applyNoteDrawZoom(){
+  fitNoteDrawingSurface();
   noteDrawCanvas.style.width=(noteDrawCanvas.width*noteDrawZoom)+'px';noteDrawCanvas.style.height=(noteDrawCanvas.height*noteDrawZoom)+'px';
   noteZoomLabel.textContent=Math.round(noteDrawZoom*100)+'%';updateNoteDrawingCursor();
 }
@@ -4623,11 +4638,11 @@ function renderNoteStudio(){
   noteDrawPendingHistory=null;clearNoteArea();noteAreaClipboard=null;noteBitmapCache.clear();updateNoteAreaTools();
   noteDrawObjects = cloneNoteObjects(tab.drawingObjects);
   noteSelectedObjectId = null;
-  noteLegacyImage=null;if(tab.drawing){noteLegacyImage=new Image();noteLegacyImage.onload=()=>{renderNoteDrawing();updateNoteAreaTools();};noteLegacyImage.src=tab.drawing;}
+  noteLegacyImage=null;if(tab.drawing){noteLegacyImage=new Image();noteLegacyImage.onload=()=>{applyNoteDrawZoom();renderNoteDrawing();updateNoteAreaTools();};noteLegacyImage.src=tab.drawing;}
   noteStudioTitle.textContent = tab.title || 'Nota atual';
   noteSavedRange=null;
   noteRichEditor.innerHTML = sanitizeNoteHtml(tab.richContent || notePlainToHtml(tab.content));
-  chooseNotePen('pen',false);applyNoteDrawZoom();requestAnimationFrame(()=>{renderNoteDrawing();updateNoteAreaTools();});
+  chooseNotePen('pen',false);applyNoteDrawZoom();requestAnimationFrame(()=>{applyNoteDrawZoom();renderNoteDrawing();updateNoteAreaTools();});
 }
 function setNoteStudioMode(mode){
   const drawingMode = mode === 'draw';
@@ -4849,6 +4864,7 @@ noteDrawClear.addEventListener('click',()=>{pushNoteDrawingHistory();noteDrawObj
 noteZoomOut.addEventListener('click',()=>zoomNoteAt(noteDrawZoom-.25));
 noteZoomIn.addEventListener('click',()=>zoomNoteAt(noteDrawZoom+.25));
 applyNoteDrawZoom();
+if(window.ResizeObserver)new ResizeObserver(()=>{applyNoteDrawZoom();renderNoteDrawing();}).observe(noteDrawViewport);
 function updateActiveTabTitle(){
   const activeTab = getActiveTab();
   if(!activeTab || !noteTabTitleInput) return;
